@@ -1,27 +1,32 @@
-# 💕 我們的記帳本
+# 💰 我們的記帳本
 
-兩人（或多人）同居共同開銷的記帳儀表板。單一 HTML 檔、可離線用，也可選擇同步到 Google Sheet 讓大家看同一本帳。
+兩人共同開銷＋收支記帳。**Google Sheet 當資料庫**（單一 Transactions 表，不分月）、**Streamlit 當前端**、**Apple Shortcut 手機快記**。
+
+```
+手機捷徑 ──POST──┐
+                  ├─→ Apps Script API ─→ Google Sheet（唯一資料來源）
+Streamlit 網站 ──┘        (Code.gs)
+（記帳＋儀表板）
+```
 
 ## 功能
-- 每筆記錄**付款人**與**分攤成員**（平均分），自動算出**誰欠誰**（綠＝該拿回、紅＝該付）
-- 依**分類**看花費（長條圖＋圓餅圖）、依**地點**看花費
-- 每月**預算**（可排序、超支提醒）
-- 分類可**自訂／拖曳排序**；新增一筆時可即時新增分類
-- 品項／地點**依分類自動完成**
-- 成員可**改名、上傳大頭貼**，人數不限
-- 幣別：CAD（可在設定調整）
 
-## 使用
-直接用瀏覽器打開 `index.html` 即可（資料存在該瀏覽器）。
-
-## 部署 / 雲端同步
-見 [部署說明.md](部署說明.md)：
-- 部署到 Vercel
-- 用 `google-apps-script.gs` 把資料存到 Google Sheet（多人同步）
+- 兩人（綾芸/景皓）各自記帳，手機捷徑 10 秒記一筆（支援 Siri）
+- 儀表板：月度收支趨勢、分類佔比、視角切換（個人/綜合）、誰欠誰（共同開銷對半結算）
+- 分類、成員名稱可在網站「設定」頁改，存回 Sheet 兩人同步
+- 幣別 CAD
 
 ## 檔案
-| 檔案 | 說明 |
+
+| 路徑 | 說明 |
 |---|---|
-| `index.html` | 應用程式本體（部署這個） |
-| `google-apps-script.gs` | Google Sheet 後端（貼到試算表的 Apps Script） |
-| `部署說明.md` | Vercel 與 Google Sheet 設定步驟 |
+| `streamlit_app.py` | 網站本體（記一筆／儀表板／設定） |
+| `lib/api.py`・`lib/analytics.py` | Apps Script client／統計計算 |
+| `apps_script/Code.gs` | 貼進 Google Sheet 的 API 層 |
+| `tests/mock_gas.py` | 本機假後端（開發用） |
+| `docs/setup-guide.md` | 部署步驟（Sheet → Streamlit Cloud → 捷徑） |
+| `docs/shortcut-setup.md` | iPhone 捷徑建立教學 |
+
+## 部署
+
+照 [docs/setup-guide.md](docs/setup-guide.md) 三步驟走完即可。

@@ -58,11 +58,16 @@ function rowToTxn_(row, idx) {
   };
 }
 
+function toBool_(v) {
+  // Shortcut 可能送字串 "true"/"false"，不能用 truthy 判斷
+  return v === true || String(v).toLowerCase() === 'true';
+}
+
 function txnToRow_(t) {
   return [
     t.id, t.created_at || '', t.date || '', t.person || '', t.type || 'expense',
     t.category || 'other', t.item || '', Number(t.amount) || 0, t.note || '',
-    t.location || '', t.shared ? 'TRUE' : 'FALSE', t.source || '',
+    t.location || '', toBool_(t.shared) ? 'TRUE' : 'FALSE', t.source || '',
   ];
 }
 

@@ -50,6 +50,12 @@ class Handler(BaseHTTPRequestHandler):
             t.setdefault("id", uuid.uuid4().hex[:8])
             t.setdefault("created_at", datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
             t.setdefault("date", t["created_at"][:10])
+            # 對齊 Code.gs：amount 轉數字、shared 容忍字串 "true"/"false"
+            try:
+                t["amount"] = float(t.get("amount") or 0)
+            except (TypeError, ValueError):
+                t["amount"] = 0.0
+            t["shared"] = t.get("shared") is True or str(t.get("shared")).lower() == "true"
             txns.append(t)
         elif action == "update":
             t = body.get("txn") or {}

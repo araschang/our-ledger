@@ -269,7 +269,7 @@ def main():
     st.title("💰 我們的記帳本")
     try:
         data = fetch_all(client.url, client.token)
-    except (ApiError, Exception) as e:  # noqa: BLE001 — 連線問題都收在這裡顯示
+    except Exception as e:  # noqa: BLE001 — 連線問題都收在這裡顯示
         st.error(f"連不上 Google Sheet：{e}")
         if st.button("重試"):
             refresh()

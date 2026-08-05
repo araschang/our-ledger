@@ -24,18 +24,21 @@ if ctx:
         c3.metric("本月日均支出", f"{S}{latest['expense'] / max(1, days):,.0f}",
                   help="以有記帳的天數計")
 
-        st.subheader("🏔️ 累積淨存")
-        fig = go.Figure()
-        fig.add_scatter(x=cn["month"], y=cn["cum_net"], mode="lines+markers",
-                        fill="tozeroy", line=dict(color=NET_C), name="累積淨存")
-        fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
-                          yaxis_title=f"{S}",
-                          xaxis=dict(type="category"))  # 月資料別被當日期軸展開
-        st.plotly_chart(fig, width="stretch")
+        with st.container(border=True, key="card_cum"):
+            st.markdown('<div class="card-title">🏔️ 累積淨存</div>',
+                        unsafe_allow_html=True)
+            fig = go.Figure()
+            fig.add_scatter(x=cn["month"], y=cn["cum_net"], mode="lines+markers",
+                            fill="tozeroy", line=dict(color=NET_C), name="累積淨存")
+            fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
+                              yaxis_title=f"{S}",
+                              xaxis=dict(type="category"))
+            st.plotly_chart(fig, width="stretch")
 
         col_l, col_r = st.columns(2)
-        with col_l:
-            st.subheader("💧 儲蓄率（淨存／收入）")
+        with col_l, st.container(border=True, key="card_sr"):
+            st.markdown('<div class="card-title">💧 儲蓄率（淨存／收入）</div>',
+                        unsafe_allow_html=True)
             sr = cn.dropna(subset=["save_rate"])
             if sr.empty:
                 st.caption("有收入記錄的月份才算得出儲蓄率")
@@ -48,8 +51,9 @@ if ctx:
                                   yaxis_tickformat=".0%",
                                   xaxis=dict(type="category"))
                 st.plotly_chart(fig, width="stretch")
-        with col_r:
-            st.subheader("📅 星期幾最會花錢")
+        with col_r, st.container(border=True, key="card_wd"):
+            st.markdown('<div class="card-title">📅 星期幾最會花錢</div>',
+                        unsafe_allow_html=True)
             wp = analytics.weekday_pattern(sub)
             if wp.empty:
                 st.caption("沒有支出記錄")

@@ -22,6 +22,27 @@ st.markdown(
     .card-title { font-weight: 700; font-size: 1.0rem; margin: 0.1rem 0 0.5rem; }
     .card-sub   { color: #8A8A88; font-size: 0.8rem; }
 
+    /* 指標數字（損益表/趨勢頁的三格）也卡片化 */
+    [data-testid="stMetric"] {
+      background: #FFFFFF;
+      border: 1px solid #E9E9E6;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(20,20,20,0.05), 0 6px 18px rgba(20,20,20,0.05);
+      padding: 0.95rem 1.1rem 0.85rem;
+    }
+    [data-testid="stMetricLabel"] { color: #8A8A88; }
+    [data-testid="stMetricValue"] { font-variant-numeric: tabular-nums;
+                                    font-weight: 700; }
+
+    /* 表單（記一筆/設定）同卡片外觀 */
+    [data-testid="stForm"] {
+      background: #FFFFFF;
+      border: 1px solid #E9E9E6 !important;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(20,20,20,0.05), 0 6px 18px rgba(20,20,20,0.05);
+      padding: 1.05rem 1.15rem;
+    }
+
     /* 同一排的卡片等高：讓卡片撐滿欄位高度
        （這版 Streamlit 的 border 容器 = stLayoutWrapper > stVerticalBlock） */
     [data-testid="stColumn"] > [data-testid="stVerticalBlock"] { height: 100%; }

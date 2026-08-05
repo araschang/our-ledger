@@ -94,12 +94,15 @@ st.markdown(
 
     /* 月份導航：內容多寬就多寬、單行、置中對齊（桌機手機同一套） */
     .mn-title { font-size: 1.4rem; font-weight: 800; white-space: nowrap; }
-    .st-key-mnav [data-testid="stHorizontalBlock"] {
+    #root .st-key-mnav [data-testid="stHorizontalBlock"] {
       flex-wrap: nowrap !important; gap: 0.5rem !important;
       align-items: center;
     }
-    .st-key-mnav [data-testid="stColumn"] {
+    #root .st-key-mnav [data-testid="stColumn"] {
       min-width: 0 !important; width: auto !important; flex: 0 0 auto !important;
+    }
+    #root .st-key-mnav [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+      width: auto !important;
     }
 
     /* 分帳狀況 綠/紅列 */

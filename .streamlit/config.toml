@@ -2,7 +2,7 @@
 [theme]
 base = "light"
 primaryColor = "#3B6FE0"                 # 藍（互動色）
-backgroundColor = "#F6F6F4"              # 淺灰底
+backgroundColor = "#F1F0ED"              # 淺灰底（比卡片深一階，卡片才浮得起來）
 secondaryBackgroundColor = "#FFFFFF"     # 白卡片
 textColor = "#1C1C1E"
 linkColor = "#3B6FE0"

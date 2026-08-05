@@ -53,7 +53,7 @@ if ctx:
                   delta_color="inverse")
 
         # ---- 損益表本體 --------------------------------------------------
-        with st.container(border=True):
+        with st.container(border=True, key="card_pl"):
             st.markdown(f'<div class="card-title">{int(month[5:7])}月損益表</div>',
                         unsafe_allow_html=True)
 
@@ -87,7 +87,7 @@ if ctx:
             st.caption("固定/變動的分類歸屬在「⚙️ 設定」調整。")
 
         # ---- 年度視圖 ----------------------------------------------------
-        with st.container(border=True):
+        with st.container(border=True, key="card_year"):
             years = sorted({m[:4] for m in months}, reverse=True)
             y1, y2 = st.columns([1, 5])
             year = y1.selectbox("年度", years, label_visibility="collapsed")

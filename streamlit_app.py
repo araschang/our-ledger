@@ -11,13 +11,13 @@ st.logo("assets/logo.svg", size="large")
 st.markdown(
     """
     <style>
-    /* 卡片容器 */
-    [data-testid="stVerticalBlockBorderWrapper"] {
-      background: #FFFFFF;
-      border: 1px solid #ECECEA !important;
-      border-radius: 14px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-      padding: 0.4rem 0.6rem;
+    /* 卡片容器：白底浮起（key 以 card_ 開頭的 container） */
+    [class*="st-key-card_"] {
+      background: #FFFFFF !important;
+      border: 1px solid #E9E9E6 !important;
+      border-radius: 14px !important;
+      box-shadow: 0 1px 2px rgba(20,20,20,0.05), 0 6px 18px rgba(20,20,20,0.05);
+      padding: 1.05rem 1.15rem !important;
     }
     .card-title { font-weight: 700; font-size: 1.0rem; margin: 0.1rem 0 0.5rem; }
     .card-sub   { color: #8A8A88; font-size: 0.8rem; }

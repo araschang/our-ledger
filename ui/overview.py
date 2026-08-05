@@ -79,14 +79,14 @@ if ctx:
                    & mdf["split"].isin(["half", "advance"])).sum())
 
     r1a, r1b = st.columns(2)
-    with r1a, st.container(border=True):
+    with r1a, st.container(border=True, key="card_joint"):
         st.markdown(f'<div class="card-sub">{int(month[5:7])}月共同開銷</div>'
                     f'<div class="big-num">{_fmt(joint_total)}</div>'
                     f'<div class="card-sub">共 {joint_n} 筆　·　'
                     + "　/　".join(f'{names[p["id"]]} {_fmt(s_month["paid"][p["id"]])}'
                                    for p in people)
                     + "</div>", unsafe_allow_html=True)
-    with r1b, st.container(border=True):
+    with r1b, st.container(border=True, key="card_settle"):
         st.markdown(f'<div class="card-title" style="display:flex;justify-content:space-between">'
                     f'<span>目前分帳狀況</span>'
                     f'<span class="card-sub">{s_all["msg"]}</span></div>',
@@ -105,7 +105,7 @@ if ctx:
     # ---- 預算卡 ---------------------------------------------------------
     budgets = {k: float(v) for k, v in (meta.get("budgets") or {}).items()
                if float(v or 0) > 0}
-    with st.container(border=True):
+    with st.container(border=True, key="card_budget"):
         st.markdown(f'<div class="card-title">{int(month[5:7])}月預算</div>',
                     unsafe_allow_html=True)
         if not budgets:
@@ -138,7 +138,7 @@ if ctx:
         return base[base["type"] == "expense"]
 
     c1, c2, c3 = st.columns(3)
-    with c1, st.container(border=True):
+    with c1, st.container(border=True, key="card_loc"):
         sub = scope_df(card_head("花在哪些地點", "tg_loc"))
         loc = analytics.by_location(sub, n=6)
         if loc.empty:
@@ -150,7 +150,7 @@ if ctx:
                         f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small>',
                         r.amount / loc["amount"].max() * 100)
                 for r in loc.itertuples()), unsafe_allow_html=True)
-    with c2, st.container(border=True):
+    with c2, st.container(border=True, key="card_cat"):
         sub = scope_df(card_head("花在哪些分類", "tg_cat"))
         bd = analytics.category_breakdown(sub, month=None)
         if bd.empty:
@@ -162,7 +162,7 @@ if ctx:
                         f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small>',
                         r.amount / bd["amount"].max() * 100)
                 for r in bd.head(6).itertuples()), unsafe_allow_html=True)
-    with c3, st.container(border=True):
+    with c3, st.container(border=True, key="card_pie"):
         sub = scope_df(card_head("分類圓餅圖", "tg_pie"))
         bd = analytics.category_breakdown(sub, month=None)
         if bd.empty:
@@ -187,7 +187,7 @@ if ctx:
                 unsafe_allow_html=True)
 
     # ---- 每月總開銷 ------------------------------------------------------
-    with st.container(border=True):
+    with st.container(border=True, key="card_month"):
         st.markdown('<div class="card-title">每月總開銷</div>', unsafe_allow_html=True)
         m12 = analytics.monthly_summary(cdf, last_n=12)
         fig = go.Figure(go.Bar(
@@ -201,7 +201,7 @@ if ctx:
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
     # ---- 明細 ------------------------------------------------------------
-    with st.container(border=True):
+    with st.container(border=True, key="card_detail"):
         this_month = card_head("明細", "tg_detail")
         f1, f2, _ = st.columns([1.4, 1.4, 3])
         base = df[df["month"] == month] if this_month else df

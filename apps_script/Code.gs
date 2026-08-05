@@ -86,9 +86,11 @@ function rowToTxn_(row, idx) {
 }
 
 function toBool_(v) {
-  // Shortcut 可能送字串；也接受捷徑清單直接送的中文選項
+  // Shortcut 可能送字串；也接受捷徑清單直接送的中文選項。
+  // 中文用 \u 逃逸寫死（共同=共同、是=是），避免複製貼上時編碼出問題。
   const s = String(v).trim().toLowerCase();
-  return v === true || s === 'true' || s === '共同' || s === '是';
+  return v === true || s === 'true' ||
+         s === '\u5171\u540c' || s === '\u662f'; // = '共同' / '是'
 }
 
 function txnToRow_(t) {

@@ -51,7 +51,7 @@ def toggle(key: str) -> bool:
 
 def card_head(title: str, key: str) -> bool:
     """卡片標題列：標題靠左、本月/全部貼右上角。回傳 True=本月。"""
-    t1, t2 = st.columns([3, 1.6], vertical_alignment="center")
+    t1, t2 = st.columns([1, 1], vertical_alignment="center")
     t1.markdown(f'<div class="card-title" style="margin:0">{title}</div>',
                 unsafe_allow_html=True)
     with t2:

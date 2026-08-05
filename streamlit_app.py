@@ -86,9 +86,13 @@ st.markdown(
                       font-variant-numeric: tabular-nums; }
     table.dt td.mut { color: #8A8A88; }
 
-    /* 卡片內的「本月/全部」貼右 */
+    /* 卡片內的「本月/全部」貼右、禁止折行 */
     [data-testid="stLayoutWrapper"] [data-testid="stButtonGroup"] {
       display: flex; justify-content: flex-end;
+      flex-wrap: nowrap !important;
+    }
+    [data-testid="stLayoutWrapper"] [data-testid="stButtonGroup"] button {
+      white-space: nowrap; flex-shrink: 0;
     }
 
     /* 損益表 */

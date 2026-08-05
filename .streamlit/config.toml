@@ -8,6 +8,7 @@ textColor = "#1C1C1E"
 linkColor = "#3B6FE0"
 borderColor = "#E7E7E4"
 baseRadius = "0.75rem"
+showWidgetBorder = true                  # 輸入框顯示邊框（白卡上才看得到格子）
 chartCategoricalColors = [
   "#3B6FE0", "#E8823E", "#34A853", "#E5484D", "#8E67D6",
   "#E5A63B", "#5B8DBE", "#C98CA7", "#7FA6A0", "#A98467",

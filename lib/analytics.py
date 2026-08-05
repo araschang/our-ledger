@@ -64,6 +64,73 @@ def category_breakdown(df: pd.DataFrame, month: str | None = None,
     return out
 
 
+def category_monthly(df: pd.DataFrame, txn_type: str = "expense",
+                     last_n: int = 6) -> pd.DataFrame:
+    """逐月×分類金額（long form: month, category, amount），取最近 last_n 個月。"""
+    sub = df[df["type"] == txn_type]
+    if sub.empty:
+        return pd.DataFrame(columns=["month", "category", "amount"])
+    months = sorted(sub["month"].unique())[-last_n:]
+    out = (sub[sub["month"].isin(months)]
+           .groupby(["month", "category"])["amount"].sum().reset_index())
+    return out.sort_values(["month", "amount"], ascending=[True, False])
+
+
+def person_category(df: pd.DataFrame, month: str | None = None) -> pd.DataFrame:
+    """分類×人 支出（long form: category, person, amount）。"""
+    sub = df[df["type"] == "expense"]
+    if month:
+        sub = sub[sub["month"] == month]
+    if sub.empty:
+        return pd.DataFrame(columns=["category", "person", "amount"])
+    return sub.groupby(["category", "person"])["amount"].sum().reset_index()
+
+
+def cumulative_net(df: pd.DataFrame) -> pd.DataFrame:
+    """月度收支＋累積淨存＋儲蓄率。columns: month, income, expense, net, cum_net, save_rate"""
+    m = monthly_summary(df, last_n=10 ** 6)
+    if m.empty:
+        return pd.DataFrame(columns=["month", "income", "expense", "net",
+                                     "cum_net", "save_rate"])
+    m = m.copy()
+    m["cum_net"] = m["net"].cumsum()
+    m["save_rate"] = (m["net"] / m["income"]).where(m["income"] > 0)
+    return m
+
+
+def weekday_pattern(df: pd.DataFrame) -> pd.DataFrame:
+    """星期幾花錢（支出總額）。columns: weekday(0=一), label, amount"""
+    sub = df[df["type"] == "expense"]
+    if sub.empty:
+        return pd.DataFrame(columns=["weekday", "label", "amount"])
+    labels = ["一", "二", "三", "四", "五", "六", "日"]
+    out = (sub.assign(weekday=sub["date"].dt.dayofweek)
+           .groupby("weekday")["amount"].sum().reindex(range(7), fill_value=0.0)
+           .reset_index())
+    out["label"] = out["weekday"].map(lambda i: labels[i])
+    return out
+
+
+def top_expenses(df: pd.DataFrame, n: int = 10,
+                 month: str | None = None) -> pd.DataFrame:
+    """大額支出 Top N。"""
+    sub = df[df["type"] == "expense"]
+    if month:
+        sub = sub[sub["month"] == month]
+    return sub.sort_values("amount", ascending=False).head(n)
+
+
+def by_location(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
+    """地點支出 Top N（略過沒填地點的）。columns: location, amount, count"""
+    sub = df[(df["type"] == "expense") & (df["location"].str.strip() != "")]
+    if sub.empty:
+        return pd.DataFrame(columns=["location", "amount", "count"])
+    out = (sub.groupby("location")
+           .agg(amount=("amount", "sum"), count=("id", "count"))
+           .sort_values("amount", ascending=False).head(n).reset_index())
+    return out
+
+
 def settlement(df: pd.DataFrame, people: list[dict],
                month: str | None = None,
                rates: dict | None = None) -> dict:

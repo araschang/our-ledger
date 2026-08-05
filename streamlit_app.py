@@ -11,6 +11,17 @@ st.logo("assets/logo.svg", size="large")
 st.markdown(
     """
     <style>
+    /* 鎖整頁水平溢出（Streamlit 右上工具列會突出畫面，iOS 會因此左右晃） */
+    html, body,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"] {
+      overflow-x: hidden !important;
+      max-width: 100vw;
+    }
+
+    /* 藏 Streamlit 的 Fork/GitHub 工具列（突出畫面的元凶，app 也用不到） */
+    [data-testid="stToolbarActions"] { display: none !important; }
+
     /* 卡片容器：白底浮起（key 以 card_ 開頭的 container） */
     [class*="st-key-card_"] {
       background: #FFFFFF !important;

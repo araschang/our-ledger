@@ -43,8 +43,7 @@ def password_gate() -> bool:
 
 if password_gate():
     pg = st.navigation([
-        st.Page("ui/record.py", title="記一筆", icon="✍️",
-                url_path="record", default=True),
+        st.Page("ui/record.py", title="記一筆", icon="✍️", default=True),
         st.Page("ui/overview.py", title="總覽", icon="📊", url_path="overview"),
         st.Page("ui/categories.py", title="分類分析", icon="🧾", url_path="categories"),
         st.Page("ui/trends.py", title="收支趨勢", icon="📈", url_path="trends"),

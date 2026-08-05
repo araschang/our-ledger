@@ -7,7 +7,7 @@ import requests
 import streamlit as st
 
 from lib import analytics
-from lib.api import ApiError, GasClient
+from lib.api import GasClient
 
 TZ = ZoneInfo("America/Vancouver")  # 「今天」以溫哥華為準，別用主機(UTC)時間
 CURRENCIES = {"CAD": "CA$", "USD": "US$", "TWD": "NT$"}

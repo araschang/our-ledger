@@ -22,6 +22,16 @@ st.markdown(
     .card-title { font-weight: 700; font-size: 1.0rem; margin: 0.1rem 0 0.5rem; }
     .card-sub   { color: #8A8A88; font-size: 0.8rem; }
 
+    /* 同一排的卡片等高：讓卡片撐滿欄位高度
+       （這版 Streamlit 的 border 容器 = stLayoutWrapper > stVerticalBlock） */
+    [data-testid="stColumn"] > [data-testid="stVerticalBlock"] { height: 100%; }
+    [data-testid="stColumn"] > [data-testid="stVerticalBlock"]
+      > [data-testid="stLayoutWrapper"],
+    [data-testid="stColumn"] > [data-testid="stVerticalBlock"]
+      > [data-testid="stVerticalBlockBorderWrapper"] { flex: 1 1 auto; }
+    [data-testid="stColumn"] [data-testid="stLayoutWrapper"]
+      > [data-testid="stVerticalBlock"] { height: 100%; }
+
     .big-num { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.01em;
                font-variant-numeric: tabular-nums; }
 
@@ -49,11 +59,16 @@ st.markdown(
     .bar-track{ height: 8px; background: #EDEDEB; border-radius: 99px; }
     .bar-fill { height: 8px; border-radius: 99px; }
 
+    /* 月份導航標題（別被窄欄擠成直排字） */
+    .mn-title { font-size: 1.4rem; font-weight: 800; white-space: nowrap; }
+
     /* 分帳狀況 綠/紅列 */
     .settle-row { display: flex; justify-content: space-between; align-items: center;
-                  border-radius: 10px; padding: 0.55rem 0.9rem; color: #fff;
-                  font-weight: 700; margin: 0.3rem 0;
+                  flex-wrap: wrap; gap: 0 0.5rem;
+                  border-radius: 10px; padding: 0.5rem 0.8rem; color: #fff;
+                  font-weight: 700; margin: 0.3rem 0; font-size: 0.95rem;
                   font-variant-numeric: tabular-nums; }
+    .settle-row > span { white-space: nowrap; }
     .settle-pos { background: #43A85C; }
     .settle-neg { background: #E5636A; }
     .settle-name { display: inline-flex; align-items: center; gap: 8px; }
@@ -80,21 +95,24 @@ st.markdown(
 
     @media (max-width: 640px) {
       .block-container { padding: 2.5rem 0.75rem 1rem 0.75rem !important; }
+      .mn-title { font-size: 1.1rem; }
       div[data-testid="stHorizontalBlock"] {
         flex-wrap: wrap !important;
         gap: 0.3rem !important;
       }
-      div[data-testid="stHorizontalBlock"] > div {
-        min-width: 3.8rem !important;
-        flex: 1 1 3.8rem !important;
-      }
-      /* 圖表/卡片欄不要硬擠併排：整寬直疊 */
-      div[data-testid="stHorizontalBlock"] > div:has(.js-plotly-plot),
-      div[data-testid="stHorizontalBlock"] > div:has([data-testid="stVerticalBlockBorderWrapper"]) {
+      /* 預設：欄位整寬直疊（卡片、圖表、表單欄） */
+      div[data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
         min-width: 100% !important;
       }
-      div[data-testid="stHorizontalBlock"] > div:has([data-testid="stMetric"]) {
-        min-width: 9rem !important;
+      /* 例外：直接放按鈕/切換鈕的列（月導航、本月/全部、更新/刪除）保持併排 */
+      div[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]
+          > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]
+          [data-testid="stButton"]) > [data-testid="stColumn"],
+      div[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]
+          > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]
+          [data-testid="stButtonGroup"]) > [data-testid="stColumn"] {
+        min-width: 3.8rem !important;
+        flex: 1 1 3.8rem !important;
       }
     }
     </style>

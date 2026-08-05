@@ -159,6 +159,56 @@ function findRow_(sh, id) {
   return -1;
 }
 
+// 一次性把 Sheet 格式弄漂亮（可重複執行）：POST {action:'beautify'}
+function beautify_() {
+  const sh = sheet_(TXN_SHEET, HEADERS);
+  const n = HEADERS.length;
+  const maxR = sh.getMaxRows();
+
+  // 交替底色（先清舊的再套，涵蓋未來新列）
+  sh.getBandings().forEach(function (b) { b.remove(); });
+  sh.getRange(1, 1, maxR, n)
+    .applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
+
+  // 表頭：App 主色藍底白字、凍結
+  sh.getRange(1, 1, 1, n).setBackground('#3B6FE0').setFontColor('#FFFFFF')
+    .setFontWeight('bold').setVerticalAlignment('middle');
+  sh.setRowHeight(1, 34);
+  sh.setFrozenRows(1);
+
+  // 欄寬
+  const widths = { id: 80, created_at: 150, date: 95, person: 75, type: 80,
+                   category: 100, item: 200, amount: 100, note: 260,
+                   location: 120, shared: 70, source: 80, currency: 80, split: 85 };
+  HEADERS.forEach(function (h, i) { if (widths[h]) sh.setColumnWidth(i + 1, widths[h]); });
+
+  // 金額數字格式 + 靠右
+  const aCol = HEADERS.indexOf('amount') + 1;
+  sh.getRange(2, aCol, maxR - 1, 1).setNumberFormat('#,##0.00');
+
+  // 收入列整列淡綠（type 在 E 欄）
+  const rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$E2="income"')
+    .setBackground('#E7F4EA')
+    .setRanges([sh.getRange(2, 1, maxR - 1, n)])
+    .build();
+  sh.setConditionalFormatRules([rule]);
+
+  // 技術欄位藏起來（資料還在、API 不受影響，右鍵可取消隱藏）
+  ['id', 'created_at', 'shared', 'source'].forEach(function (h) {
+    const c = HEADERS.indexOf(h) + 1;
+    if (c > 0) sh.hideColumns(c);
+  });
+
+  // Meta 表
+  const ms = sheet_(META_SHEET, ['key', 'value']);
+  ms.getRange(1, 1, 1, 2).setBackground('#616A75').setFontColor('#FFFFFF')
+    .setFontWeight('bold');
+  ms.setFrozenRows(1);
+  ms.setColumnWidth(1, 150);
+  ms.setColumnWidth(2, 520);
+}
+
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -208,6 +258,9 @@ function doPost(e) {
 
     } else if (body.action === 'meta') {
       writeMeta_(body.meta || {});
+
+    } else if (body.action === 'beautify') {
+      beautify_();
 
     } else {
       return json_({ ok: false, error: 'unknown action: ' + body.action });

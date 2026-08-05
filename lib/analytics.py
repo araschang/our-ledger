@@ -16,6 +16,10 @@ def to_df(transactions: list) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date"])
     df["month"] = df["date"].dt.strftime("%Y-%m")
+    # created_at 可能是 ISO 或 JS Date 字串（含 "(Pacific...)" 尾巴），容錯解析供排序用
+    df["created_ts"] = pd.to_datetime(
+        df["created_at"].astype(str).str.replace(r"\s*\(.+\)$", "", regex=True),
+        errors="coerce", format="mixed", utc=True)
     return df
 
 

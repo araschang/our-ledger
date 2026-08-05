@@ -258,7 +258,7 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
             f"{c}→CAD {rates.get(c, 1.0):.3f}" for c in foreign))
 
     st.subheader("🕘 最近記錄")
-    recent = df.sort_values(["date", "created_at"], ascending=False).head(20).copy()
+    recent = df.sort_values(["date", "created_ts"], ascending=False).head(20).copy()
     recent["人"] = recent["person"].map(names).fillna(recent["person"])
     recent["日期"] = recent["date"].dt.strftime("%m/%d")
     recent["金額"] = recent.apply(

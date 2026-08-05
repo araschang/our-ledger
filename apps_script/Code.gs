@@ -60,10 +60,17 @@ function fmtDate_(v) {
   return String(v || '').slice(0, 10);
 }
 
+function fmtDateTime_(v) {
+  if (v && typeof v.getFullYear === 'function') {
+    return Utilities.formatDate(v, ss_().getSpreadsheetTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
+  }
+  return String(v || '');
+}
+
 function rowToTxn_(row, idx) {
   return {
     id: String(row[idx.id]),
-    created_at: String(row[idx.created_at] || ''),
+    created_at: fmtDateTime_(row[idx.created_at]),
     date: fmtDate_(row[idx.date]),
     person: String(row[idx.person] || ''),
     type: String(row[idx.type] || 'expense'),

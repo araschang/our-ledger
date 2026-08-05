@@ -98,6 +98,13 @@ st.markdown(
     [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stButtonGroup"] button {
       white-space: nowrap; flex-shrink: 0;
     }
+    /* 真正的靠右主力：按鈕群的父容器在 flex column 裡 align-self 到行尾 */
+    [data-testid="stLayoutWrapper"] [data-testid="stElementContainer"]:has(
+      > [data-testid="stButtonGroup"]),
+    [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stElementContainer"]:has(
+      > [data-testid="stButtonGroup"]) {
+      align-self: flex-end !important;
+    }
 
     /* 損益表 */
     table.pl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }

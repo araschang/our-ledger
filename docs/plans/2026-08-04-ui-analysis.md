@@ -26,11 +26,14 @@ lib/analytics.py   # 加：category_monthly / cumulative_net / weekday_pattern /
 
 ## 驗收條件
 
-- [ ] 本機 mock（多月 seed 資料）五頁全部渲染無 exception
-- [ ] 新分析函式數字用手算 seed 對照
-- [ ] 空資料集所有頁不噴錯
-- [ ] 記一筆流程回歸（新增後總覽反映）
-- [ ] fresh-context agent 驗收 PASS
-- [ ] push（Streamlit Cloud 自動部署）
+- [x] 本機 mock（多月 seed 資料）五頁全部渲染無 exception
+- [x] 新分析函式數字用手算 seed 對照
+- [x] 空資料集所有頁不噴錯
+- [x] 記一筆流程回歸（驗收 agent 真瀏覽器送出 ×3 全成功）
+- [x] fresh-context agent 驗收 PASS（2026-08-04；已修其非致命發現：default url_path、未用 import）
+- [x] push（Streamlit Cloud 自動部署）
 
 ## 迭代日誌
+
+- 瀏覽器面板鍵盤/點擊事件間歇失靈（本 session 第二次），UI 回歸改由驗收 agent 的瀏覽器完成
+- lesson：Streamlit 的 secrets 讀取基準是主 script 所在目錄，不是 cwd——想用隔離 secrets 測試要複製整個專案

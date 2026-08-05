@@ -261,7 +261,7 @@ if ctx:
                     category = st.selectbox("分類", all_cats,
                                             index=all_cats.index(row["category"]))
                     item = st.text_input("品項", value=row["item"])
-                    amount = st.number_input("金額（CAD）", min_value=0.0,
+                    amount = st.number_input(f"金額（{row['currency']}）", min_value=0.0,
                                              value=float(row["amount"]),
                                              step=1.0, format="%.2f")
                     date = st.date_input("日期", value=row["date"].date())

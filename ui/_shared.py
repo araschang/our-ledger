@@ -110,6 +110,13 @@ def load() -> dict | None:
             **{k: v for k, v in (data.get("meta") or {}).items() if v}}
     df = analytics.to_df(data.get("transactions") or [])
     cdf = analytics.to_cad(df, fetch_rates())  # 統計一律用這個（全 CAD）
+    ids = [p["id"] for p in meta["people"]]
+    if len(ids) == 2:
+        # owner = 這筆帳實際算誰的：代墊(advance)歸對方，其餘歸付款人
+        other = {ids[0]: ids[1], ids[1]: ids[0]}
+        for d in (df, cdf):
+            is_adv = (d["type"] == "expense") & (d["split"] == "advance")
+            d["owner"] = d["person"].where(~is_adv, d["person"].map(other))
     names = {p["id"]: p["name"] for p in meta["people"]}
     return {"client": client, "df": df, "cdf": cdf, "meta": meta, "names": names}
 

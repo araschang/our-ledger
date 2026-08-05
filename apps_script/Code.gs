@@ -28,7 +28,9 @@ const TZ = 'America/Vancouver'; // 「今天」以溫哥華為準（主機/帳�
 const TXN_SHEET = 'Transactions';
 const META_SHEET = 'Meta';
 const HEADERS = ['id', 'created_at', 'date', 'person', 'type', 'category',
-                 'item', 'amount', 'note', 'location', 'shared', 'source', 'currency'];
+                 'item', 'amount', 'note', 'location', 'shared', 'source', 'currency',
+                 'split'];
+// split: half=兩人對半 / own=自己的 / advance=代墊(對方欠全額)
 
 let SS_ = null;
 function ss_() {
@@ -82,6 +84,9 @@ function rowToTxn_(row, idx) {
     shared: String(row[idx.shared]).toUpperCase() === 'TRUE',
     source: String(row[idx.source] || ''),
     currency: (idx.currency >= 0 && row[idx.currency]) ? String(row[idx.currency]) : 'CAD',
+    split: (idx.split >= 0 && ['half','own','advance'].indexOf(String(row[idx.split])) >= 0)
+      ? String(row[idx.split])
+      : (String(row[idx.shared]).toUpperCase() === 'TRUE' ? 'half' : 'own'),
   };
 }
 
@@ -93,12 +98,21 @@ function toBool_(v) {
          s === '\u5171\u540c' || s === '\u662f'; // = '共同' / '是'
 }
 
+function splitOf_(t) {
+  // 分法：優先看明確的 split，否則從 shared 推導（捷徑只送 shared 一個欄位）
+  const sp = String(t.split || '').trim().toLowerCase();
+  if (sp === 'half' || sp === 'own' || sp === 'advance') return sp;
+  const sh = String(t.shared === undefined ? '' : t.shared).trim().toLowerCase();
+  if (sh === 'advance' || sh === '\u4ee3\u588a') return 'advance'; // = '代墊'
+  return toBool_(t.shared) ? 'half' : 'own';
+}
+
 function txnToRow_(t) {
   return [
     t.id, t.created_at || '', t.date || '', t.person || '', t.type || 'expense',
     t.category || 'other', t.item || '', Number(t.amount) || 0, t.note || '',
-    t.location || '', toBool_(t.shared) ? 'TRUE' : 'FALSE', t.source || '',
-    t.currency || 'CAD',
+    t.location || '', splitOf_(t) === 'half' ? 'TRUE' : 'FALSE', t.source || '',
+    t.currency || 'CAD', splitOf_(t),
   ];
 }
 

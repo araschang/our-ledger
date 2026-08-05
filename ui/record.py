@@ -28,9 +28,17 @@ if ctx:
         currency = a2.selectbox("幣別", list(CURRENCIES), index=0,
                                 help="選 USD/TWD 會以當下匯率換成 CAD 入帳，原幣金額記在備註")
         date = st.date_input("日期", value=today())
-        shared = True
+        split = "own"
         if ttype == "expense":
-            shared = st.checkbox("共同開銷（兩人分攤）", value=True)
+            others = [p["id"] for p in meta["people"] if p["id"] != person]
+            other_name = names[others[0]] if others else "對方"
+            split = st.radio(
+                "這筆怎麼算", ["half", "own", "advance"],
+                format_func=lambda v: {
+                    "half": "👫 兩人分攤",
+                    "own": f"🙋 {names[person]} 自己的",
+                    "advance": f"🤝 幫 {other_name} 付的（代墊，{other_name} 欠全額）",
+                }[v], horizontal=True)
         with st.expander("地點／備註（選填）"):
             location = st.text_input("地點")
             note = st.text_input("備註")
@@ -57,7 +65,8 @@ if ctx:
                         "category": category, "item": item.strip(),
                         "amount": save_amount, "note": save_note,
                         "location": location.strip(),
-                        "shared": bool(shared) if ttype == "expense" else False,
+                        "shared": split == "half",
+                        "split": split if ttype == "expense" else "own",
                         "source": "web", "currency": "CAD",
                     })
                     st.session_state["flash"] = flash

@@ -31,8 +31,10 @@ def duo_settlement_html(s: dict, people: list, names: dict,
         mid_main = (f'<div class="duo-verdict">{names[debtor["id"]]} 要給 '
                     f'{names[creditor["id"]]}</div>'
                     f'<div class="duo-amt">{_fmt(abs(diff))}</div>')
+    adv = s.get("advance_total", 0.0)
+    adv_txt = f'　代墊 {_fmt(adv)}' if adv > 0.005 else ""
     mid = (f'<div class="duo-mid">{mid_main}'
-           f'<div class="duo-sub">{subtitle}　共同開銷 {_fmt(s["total"])}</div></div>')
+           f'<div class="duo-sub">{subtitle}　共同開銷 {_fmt(s["total"])}{adv_txt}</div></div>')
     return f'<div class="duo-card">{sides[0]}{mid}{sides[1]}</div>'
 
 st.title("📊 總覽")
@@ -110,7 +112,7 @@ if ctx:
         recent["金額"] = recent.apply(
             lambda r: f"{'+' if r['type'] == 'income' else '-'}{sym(r['currency'])}{r['amount']:,.2f}",
             axis=1)
-        recent["共同"] = recent["shared"].map({True: "👫", False: ""})
+        recent["共同"] = recent["split"].map({"half": "👫", "advance": "🤝", "own": ""})
         st.dataframe(recent[["日期", "人", "category", "item", "金額", "共同", "note"]],
                      width="stretch", hide_index=True,
                      column_config={"category": "分類", "item": "品項", "note": "備註"})

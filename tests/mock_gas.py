@@ -50,12 +50,22 @@ class Handler(BaseHTTPRequestHandler):
             t.setdefault("id", uuid.uuid4().hex[:8])
             t.setdefault("created_at", datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
             t.setdefault("date", t["created_at"][:10])
-            # 對齊 Code.gs：amount 轉數字、shared 容忍字串 "true"/"false"
+            # 對齊 Code.gs：amount 轉數字、split 從 shared 推導（含中文選項）
             try:
                 t["amount"] = float(t.get("amount") or 0)
             except (TypeError, ValueError):
                 t["amount"] = 0.0
-            t["shared"] = t.get("shared") is True or str(t.get("shared")).lower() == "true"
+            sh = str(t.get("shared")).strip().lower()
+            sp = str(t.get("split", "")).strip().lower()
+            if sp not in ("half", "own", "advance"):
+                if sh in ("advance", "代墊"):
+                    sp = "advance"
+                elif t.get("shared") is True or sh in ("true", "共同", "是"):
+                    sp = "half"
+                else:
+                    sp = "own"
+            t["split"] = sp
+            t["shared"] = sp == "half"
             txns.append(t)
         elif action == "update":
             t = body.get("txn") or {}

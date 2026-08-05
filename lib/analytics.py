@@ -2,7 +2,13 @@
 import pandas as pd
 
 COLUMNS = ["id", "created_at", "date", "person", "type", "category",
-           "item", "amount", "note", "location", "shared", "source", "currency"]
+           "item", "amount", "note", "location", "shared", "source", "currency",
+           "split"]
+
+# split：這筆帳怎麼算
+#   half    = 兩人對半（舊資料 shared=TRUE）
+#   own     = 付的人自己的（舊資料 shared=FALSE）
+#   advance = 代墊——付的人幫對方付，對方欠全額，統計歸對方
 
 
 def to_df(transactions: list) -> pd.DataFrame:
@@ -11,6 +17,9 @@ def to_df(transactions: list) -> pd.DataFrame:
     for col in ("item", "note", "location", "category", "person", "type", "source"):
         df[col] = df[col].fillna("")
     df["currency"] = df["currency"].fillna("").replace("", "CAD")  # 舊資料沒這欄=CAD
+    # split 沒填（舊資料）→ 從 shared 推導
+    df["split"] = df["split"].where(df["split"].isin(["half", "own", "advance"]),
+                                    df["shared"].map({True: "half", False: "own"}))
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
     df["shared"] = df["shared"].astype(bool)
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -32,10 +41,11 @@ def to_cad(df: pd.DataFrame, rates: dict) -> pd.DataFrame:
 
 
 def filter_person(df: pd.DataFrame, person: str | None) -> pd.DataFrame:
-    """person=None 代表綜合視角。"""
+    """person=None 代表綜合視角。有 owner 欄（代墊歸屬修正後）優先用它。"""
     if person is None:
         return df
-    return df[df["person"] == person]
+    col = "owner" if "owner" in df.columns else "person"
+    return df[df[col] == person]
 
 
 def monthly_summary(df: pd.DataFrame, last_n: int = 12) -> pd.DataFrame:
@@ -77,13 +87,15 @@ def category_monthly(df: pd.DataFrame, txn_type: str = "expense",
 
 
 def person_category(df: pd.DataFrame, month: str | None = None) -> pd.DataFrame:
-    """分類×人 支出（long form: category, person, amount）。"""
+    """分類×人 支出（long form: category, person, amount）。代墊歸實際主人。"""
     sub = df[df["type"] == "expense"]
     if month:
         sub = sub[sub["month"] == month]
     if sub.empty:
         return pd.DataFrame(columns=["category", "person", "amount"])
-    return sub.groupby(["category", "person"])["amount"].sum().reset_index()
+    col = "owner" if "owner" in sub.columns else "person"
+    out = sub.groupby(["category", col])["amount"].sum().reset_index()
+    return out.rename(columns={col: "person"})
 
 
 def cumulative_net(df: pd.DataFrame) -> pd.DataFrame:
@@ -134,30 +146,43 @@ def by_location(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
 def settlement(df: pd.DataFrame, people: list[dict],
                month: str | None = None,
                rates: dict | None = None) -> dict:
-    """共同開銷結算：shared=TRUE 的支出兩人對半，一律換算成 CAD。
+    """結算：half 對半、advance 對方欠全額、own 不進結算。一律 CAD。
 
-    rates: 各幣別→CAD 的匯率（例 {"USD": 1.35}）；缺的幣別當 1.0。
-    回傳 {'total': 共同開銷總額(CAD), 'paid': {person_id: 已付},
-          'balance': {person_id: 已付-應付}, 'msg': 誰欠誰一句話}
-    balance > 0 = 多付了該拿回；< 0 = 該補給對方。
+    rates: 各幣別→CAD 的匯率；缺的幣別當 1.0。
+    回傳 {'total': 共同開銷(half)總額, 'advance_total': 代墊總額,
+          'paid': {pid: 為對方出的錢(half+advance)},
+          'balance': {pid: 該拿回(+)/該補(-)}, 'msg': 誰欠誰一句話}
     """
-    sub = df[(df["type"] == "expense") & df["shared"]]
+    sub = df[df["type"] == "expense"].copy()
     if month:
         sub = sub[sub["month"] == month]
     rates = rates or {}
-    cad = sub["amount"] * sub["currency"].map(lambda c: float(rates.get(c, 1.0)))
+    sub["cad"] = sub["amount"] * sub["currency"].map(lambda c: float(rates.get(c, 1.0)))
     ids = [p["id"] for p in people]
     names = {p["id"]: p["name"] for p in people}
-    paid = {pid: float(cad[sub["person"] == pid].sum()) for pid in ids}
-    total = float(cad.sum())
-    share = total / len(ids) if ids else 0.0
-    balance = {pid: paid[pid] - share for pid in ids}
+    half = sub[sub["split"] == "half"]
+    adv = sub[sub["split"] == "advance"]
+
+    half_paid = {pid: float(half[half["person"] == pid]["cad"].sum()) for pid in ids}
+    adv_paid = {pid: float(adv[adv["person"] == pid]["cad"].sum()) for pid in ids}
+    total = float(half["cad"].sum())
+    adv_total = float(adv["cad"].sum())
+    n = len(ids) or 1
+    # half：付的人 + 全額 − 自己那份；advance：付的人 + 全額，其他人分攤欠款
+    balance = {}
+    for pid in ids:
+        others_adv = sum(adv_paid[q] for q in ids if q != pid)
+        balance[pid] = (half_paid[pid] - total / n
+                        + adv_paid[pid]
+                        - (others_adv / (n - 1) if n > 1 else 0.0))
+    paid = {pid: half_paid[pid] + adv_paid[pid] for pid in ids}
 
     msg = "兩不相欠 🎉"
     if len(ids) == 2:
         a, b = ids
-        diff = balance[a]  # a 多付的量
+        diff = balance[a]
         if abs(diff) >= 0.005:
             debtor, creditor = (b, a) if diff > 0 else (a, b)
             msg = f"{names[debtor]} 要給 {names[creditor]} {abs(diff):,.2f}"
-    return {"total": total, "paid": paid, "balance": balance, "msg": msg}
+    return {"total": total, "advance_total": adv_total,
+            "paid": paid, "balance": balance, "msg": msg}

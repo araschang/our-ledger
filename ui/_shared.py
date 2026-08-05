@@ -11,6 +11,16 @@ from lib.api import GasClient
 
 TZ = ZoneInfo("America/Vancouver")  # 「今天」以溫哥華為準，別用主機(UTC)時間
 CURRENCIES = {"CAD": "CA$", "USD": "US$", "TWD": "NT$"}
+
+# 視覺 tokens（同 .streamlit/config.toml 的主題）
+INCOME_C, EXPENSE_C, NET_C = "#6FAF7C", "#D96A55", "#E4B95B"   # 苔綠/赤/金
+DUO_COLORS = ["#E8834E", "#5B8DBE"]  # 柿橙(Diana) × 靛藍(Aras)，依 meta.people 順序
+
+
+def person_colors(meta: dict) -> dict:
+    """person_id → 專屬色（依 meta.people 順序配雙人色）。"""
+    return {p["id"]: DUO_COLORS[i % len(DUO_COLORS)]
+            for i, p in enumerate(meta["people"])}
 FALLBACK_RATES = {"CAD": 1.0, "USD": 1.35, "TWD": 0.044}
 S = CURRENCIES["CAD"]          # 統計一律 CAD
 MS = S.replace("$", "\\$")     # markdown 語境（成對 $ 會被當 LaTeX）

@@ -3,7 +3,7 @@ import plotly.express as px
 import streamlit as st
 
 from lib import analytics
-from ui._shared import S, empty_hint, load, person_view, sym
+from ui._shared import S, empty_hint, load, person_colors, person_view, sym
 
 st.title("🧾 分類分析")
 
@@ -32,9 +32,11 @@ if ctx:
                 st.caption("沒有支出記錄")
             else:
                 pc = pc.assign(人=pc["person"].map(names).fillna(pc["person"]))
+                pcolors = person_colors(ctx["meta"])
                 fig = px.bar(pc, x="amount", y="category", color="人",
                              barmode="group", orientation="h",
-                             color_discrete_sequence=["#eb6834", "#2a78d6"])
+                             color_discrete_map={names.get(pid, pid): c
+                                                 for pid, c in pcolors.items()})
                 fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=400,
                                   xaxis_title=f"支出（{S}）", yaxis_title="",
                                   yaxis=dict(autorange="reversed"),

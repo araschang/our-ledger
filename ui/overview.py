@@ -5,9 +5,35 @@ import streamlit as st
 
 from lib import analytics
 from lib.api import ApiError
-from ui._shared import MS, S, empty_hint, fetch_rates, load, person_view, refresh, sym
+from ui._shared import (EXPENSE_C, INCOME_C, MS, NET_C, S, empty_hint,
+                        fetch_rates, load, person_colors, person_view, refresh, sym)
 
-INCOME_C, EXPENSE_C, NET_C = "#1baf7a", "#e34948", "#2a78d6"
+
+def _fmt(v: float) -> str:
+    return f"CA&#36;{v:,.2f}"  # HTML 語境用 &#36; 避免 markdown 把 $ 當 LaTeX
+
+
+def duo_settlement_html(s: dict, people: list, names: dict,
+                        colors: dict, subtitle: str) -> str:
+    p1, p2 = people[0], people[1]
+    sides = []
+    for p in (p1, p2):
+        sides.append(
+            f'<div class="duo-side" style="--pc:{colors[p["id"]]}">'
+            f'<div class="duo-name">{names[p["id"]]}</div>'
+            f'<div class="duo-paid">{_fmt(s["paid"][p["id"]])}</div>'
+            f'<div class="duo-sub">已付</div></div>')
+    diff = s["balance"][p1["id"]]
+    if abs(diff) < 0.005:
+        mid_main = '<div class="duo-even">兩不相欠 🎉</div>'
+    else:
+        debtor, creditor = (p2, p1) if diff > 0 else (p1, p2)
+        mid_main = (f'<div class="duo-verdict">{names[debtor["id"]]} 要給 '
+                    f'{names[creditor["id"]]}</div>'
+                    f'<div class="duo-amt">{_fmt(abs(diff))}</div>')
+    mid = (f'<div class="duo-mid">{mid_main}'
+           f'<div class="duo-sub">{subtitle}　共同開銷 {_fmt(s["total"])}</div></div>')
+    return f'<div class="duo-card">{sides[0]}{mid}{sides[1]}</div>'
 
 st.title("📊 總覽")
 
@@ -61,10 +87,16 @@ if ctx:
         st.subheader("🤝 誰欠誰（共同開銷對半，CAD 結算）")
         s_month = analytics.settlement(cdf, meta["people"], month=month)
         s_all = analytics.settlement(cdf, meta["people"])
-        st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {MS}{s_month['total']:,.2f}）")
-        st.caption(f"累計：{s_all['msg']}　"
-                   + "　".join(f"{names[pid]} 已付 {MS}{amt:,.2f}"
-                               for pid, amt in s_all["paid"].items()))
+        if len(meta["people"]) >= 2:
+            st.markdown(duo_settlement_html(s_month, meta["people"], names,
+                                            person_colors(meta), month),
+                        unsafe_allow_html=True)
+            st.markdown(f'<div class="duo-foot">累計：{s_all["msg"]}　'
+                        + "　".join(f'{names[pid]} 已付 {_fmt(amt)}'
+                                    for pid, amt in s_all["paid"].items())
+                        + "</div>", unsafe_allow_html=True)
+        else:
+            st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {MS}{s_month['total']:,.2f}）")
         foreign = sorted(set(df["currency"]) - {"CAD"})
         if foreign:
             rates = fetch_rates()

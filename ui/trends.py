@@ -3,9 +3,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from lib import analytics
-from ui._shared import S, empty_hint, load, person_view
-
-INCOME_C, EXPENSE_C, NET_C = "#1baf7a", "#e34948", "#2a78d6"
+from ui._shared import EXPENSE_C, INCOME_C, NET_C, S, empty_hint, load, person_view
 
 st.title("📈 收支趨勢")
 

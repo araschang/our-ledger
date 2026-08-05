@@ -86,6 +86,11 @@ st.markdown(
                       font-variant-numeric: tabular-nums; }
     table.dt td.mut { color: #8A8A88; }
 
+    /* 卡片內的「本月/全部」貼右 */
+    [data-testid="stLayoutWrapper"] [data-testid="stButtonGroup"] {
+      display: flex; justify-content: flex-end;
+    }
+
     /* 損益表 */
     table.pl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
     table.pl td { padding: 7px 8px; }

@@ -43,10 +43,19 @@ def month_nav(months: list[str]) -> str:
 
 
 def toggle(key: str) -> bool:
-    """卡片右上「本月/全部」切換，回傳 True=本月。"""
+    """「本月/全部」切換，回傳 True=本月。"""
     v = st.segmented_control(" ", ["本月", "全部"], default="本月",
                              key=key, label_visibility="collapsed")
     return (v or "本月") == "本月"
+
+
+def card_head(title: str, key: str) -> bool:
+    """卡片標題列：標題靠左、本月/全部貼右上角。回傳 True=本月。"""
+    t1, t2 = st.columns([3, 1.6], vertical_alignment="center")
+    t1.markdown(f'<div class="card-title" style="margin:0">{title}</div>',
+                unsafe_allow_html=True)
+    with t2:
+        return toggle(key)
 
 
 ctx = load()
@@ -130,8 +139,7 @@ if ctx:
 
     c1, c2, c3 = st.columns(3)
     with c1, st.container(border=True):
-        st.markdown('<div class="card-title">花在哪些地點</div>', unsafe_allow_html=True)
-        sub = scope_df(toggle("tg_loc"))
+        sub = scope_df(card_head("花在哪些地點", "tg_loc"))
         loc = analytics.by_location(sub, n=6)
         if loc.empty:
             st.caption("記帳時填「地點」就會有這張圖")
@@ -143,8 +151,7 @@ if ctx:
                         r.amount / loc["amount"].max() * 100)
                 for r in loc.itertuples()), unsafe_allow_html=True)
     with c2, st.container(border=True):
-        st.markdown('<div class="card-title">花在哪些分類</div>', unsafe_allow_html=True)
-        sub = scope_df(toggle("tg_cat"))
+        sub = scope_df(card_head("花在哪些分類", "tg_cat"))
         bd = analytics.category_breakdown(sub, month=None)
         if bd.empty:
             st.caption("沒有支出記錄")
@@ -156,8 +163,7 @@ if ctx:
                         r.amount / bd["amount"].max() * 100)
                 for r in bd.head(6).itertuples()), unsafe_allow_html=True)
     with c3, st.container(border=True):
-        st.markdown('<div class="card-title">分類圓餅圖</div>', unsafe_allow_html=True)
-        sub = scope_df(toggle("tg_pie"))
+        sub = scope_df(card_head("分類圓餅圖", "tg_pie"))
         bd = analytics.category_breakdown(sub, month=None)
         if bd.empty:
             st.caption("沒有支出記錄")
@@ -196,10 +202,7 @@ if ctx:
 
     # ---- 明細 ------------------------------------------------------------
     with st.container(border=True):
-        h1, h2 = st.columns([4, 1.3])
-        h1.markdown('<div class="card-title">明細</div>', unsafe_allow_html=True)
-        with h2:
-            this_month = toggle("tg_detail")
+        this_month = card_head("明細", "tg_detail")
         f1, f2, _ = st.columns([1.4, 1.4, 3])
         base = df[df["month"] == month] if this_month else df
         cats = ["全部分類"] + sorted(base["category"].unique())

@@ -86,10 +86,12 @@ st.markdown(
                       font-variant-numeric: tabular-nums; }
     table.dt td.mut { color: #8A8A88; }
 
-    /* 卡片內的「本月/全部」貼右、禁止折行（新舊版 DOM 都涵蓋） */
+    /* 卡片內的「本月/全部」貼右、禁止折行（新舊版 DOM 都涵蓋；
+       margin-left:auto + fit-content 讓「群組滿寬」或「群組縮寬」兩種版本都靠右） */
     [data-testid="stLayoutWrapper"] [data-testid="stButtonGroup"],
     [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stButtonGroup"] {
       display: flex; justify-content: flex-end;
+      width: fit-content; margin-left: auto;
       flex-wrap: nowrap !important;
     }
     [data-testid="stLayoutWrapper"] [data-testid="stButtonGroup"] button,

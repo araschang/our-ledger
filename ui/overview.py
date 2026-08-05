@@ -217,85 +217,106 @@ if ctx:
             rows = rows[rows["person"] == payer_f]
         rows = rows.sort_values(["date", "created_ts"], ascending=False).head(200)
 
+        @st.dialog("✏️ 編輯這筆")
+        def edit_dlg(rid: str):
+            row = df[df["id"] == rid].iloc[0]
+            e1, e2 = st.columns(2)
+            person = e1.radio("付款人", [p["id"] for p in people],
+                              index=[p["id"] for p in people].index(row["person"])
+                              if row["person"] in [p["id"] for p in people] else 0,
+                              format_func=lambda i: names[i], horizontal=True)
+            ttype = e2.radio("類型", ["expense", "income"],
+                             index=0 if row["type"] == "expense" else 1,
+                             format_func=lambda t: "支出" if t == "expense" else "收入",
+                             horizontal=True)
+            all_cats = (meta["categories"]["expense"]
+                        + meta["categories"]["income"])
+            if row["category"] not in all_cats:
+                all_cats = [row["category"]] + all_cats
+            category = st.selectbox("分類", all_cats,
+                                    index=all_cats.index(row["category"]),
+                                    format_func=cat_label)
+            item = st.text_input("品項", value=row["item"])
+            amount = st.number_input(f"金額（{row['currency']}）", min_value=0.0,
+                                     value=float(row["amount"]),
+                                     step=1.0, format="%.2f")
+            date = st.date_input("日期", value=row["date"].date())
+            split = st.radio("分攤", ["half", "own", "advance"],
+                             index=["half", "own", "advance"].index(row["split"]),
+                             format_func=SPLIT_LABEL.get, horizontal=True)
+            location = st.text_input("地點", value=row["location"])
+            note = st.text_input("備註", value=row["note"])
+            if st.button("💾 更新", type="primary", width="stretch"):
+                try:
+                    client.update_txn({
+                        "id": rid, "created_at": row["created_at"],
+                        "date": str(date), "person": person,
+                        "type": ttype, "category": category,
+                        "item": item.strip(), "amount": round(float(amount), 2),
+                        "note": note.strip(), "location": location.strip(),
+                        "split": split if ttype == "expense" else "own",
+                        "source": row["source"], "currency": row["currency"],
+                    })
+                    st.session_state["flash"] = "更新好了"
+                    refresh()
+                except ApiError as e:
+                    st.error(f"更新失敗：{e}")
+
+        @st.dialog("🗑️ 確定要刪除嗎？")
+        def del_dlg(rid: str):
+            row = df[df["id"] == rid].iloc[0]
+            st.markdown(f'{row["date"].strftime("%m/%d")}　**{row["item"]}**　'
+                        f'{sym(row["currency"])}{row["amount"]:,.2f}　'
+                        f'（{names.get(row["person"], row["person"])}）')
+            d1, d2 = st.columns(2)
+            if d1.button("🗑️ 刪除", type="primary", width="stretch"):
+                try:
+                    client.delete_txn(rid)
+                    st.session_state["flash"] = "刪掉了"
+                    refresh()
+                except ApiError as e:
+                    st.error(f"刪除失敗：{e}")
+            if d2.button("取消", width="stretch"):
+                st.rerun()
+
         if rows.empty:
             st.caption("沒有符合條件的記錄")
         else:
-            body = ""
-            for r in rows.itertuples():
-                loc = (f'<br><span class="loc-pill">📍 {r.location}</span>'
-                       if r.location else "")
-                sign = "+" if r.type == "income" else ""
-                amt_style = ' style="color:#34A853"' if r.type == "income" else ""
-                split_txt = ("收入" if r.type == "income"
-                             else SPLIT_LABEL.get(r.split, r.split))
-                body += (f'<tr><td class="mut">{r.date.strftime("%m/%d")}</td>'
-                         f'<td>{r.item}{loc}</td>'
-                         f'<td>{cat_label(r.category)}</td>'
-                         f'<td>{chip(r.person, names, colors)}</td>'
-                         f'<td class="amt"{amt_style}>{sign}'
-                         f'{sym(r.currency)}{r.amount:,.2f}</td>'
-                         f'<td class="mut">{split_txt}</td></tr>')
-            st.markdown('<table class="dt"><thead><tr>'
-                        '<th>日期</th><th>品項</th><th>分類</th><th>付款人</th>'
-                        '<th>金額</th><th>分攤</th></tr></thead>'
-                        f'<tbody>{body}</tbody></table>', unsafe_allow_html=True)
-
-        with st.expander("✏️ 編輯／刪除某一筆"):
-            if rows.empty:
-                st.caption("上面先篩出要改的記錄")
-            else:
-                labels = {r.id: f'{r.date.strftime("%m/%d")} {names.get(r.person, r.person)}'
-                                f' {r.item} {sym(r.currency)}{r.amount:,.2f}'
-                          for r in rows.itertuples()}
-                rid = st.selectbox("選一筆", list(labels), format_func=labels.get)
-                row = df[df["id"] == rid].iloc[0]
-                with st.form(f"edit_{rid}"):
-                    e1, e2 = st.columns(2)
-                    person = e1.radio("付款人", [p["id"] for p in people],
-                                      index=[p["id"] for p in people].index(row["person"])
-                                      if row["person"] in [p["id"] for p in people] else 0,
-                                      format_func=lambda i: names[i], horizontal=True)
-                    ttype = e2.radio("類型", ["expense", "income"],
-                                     index=0 if row["type"] == "expense" else 1,
-                                     format_func=lambda t: "支出" if t == "expense" else "收入",
-                                     horizontal=True)
-                    all_cats = (meta["categories"]["expense"]
-                                + meta["categories"]["income"])
-                    if row["category"] not in all_cats:
-                        all_cats = [row["category"]] + all_cats
-                    category = st.selectbox("分類", all_cats,
-                                            index=all_cats.index(row["category"]))
-                    item = st.text_input("品項", value=row["item"])
-                    amount = st.number_input(f"金額（{row['currency']}）", min_value=0.0,
-                                             value=float(row["amount"]),
-                                             step=1.0, format="%.2f")
-                    date = st.date_input("日期", value=row["date"].date())
-                    split = st.radio("分攤", ["half", "own", "advance"],
-                                     index=["half", "own", "advance"].index(row["split"]),
-                                     format_func=SPLIT_LABEL.get, horizontal=True)
-                    location = st.text_input("地點", value=row["location"])
-                    note = st.text_input("備註", value=row["note"])
-                    b1, b2 = st.columns(2)
-                    if b1.form_submit_button("💾 更新", type="primary",
-                                             width="stretch"):
-                        try:
-                            client.update_txn({
-                                "id": rid, "created_at": row["created_at"],
-                                "date": str(date), "person": person,
-                                "type": ttype, "category": category,
-                                "item": item.strip(), "amount": round(float(amount), 2),
-                                "note": note.strip(), "location": location.strip(),
-                                "split": split if ttype == "expense" else "own",
-                                "source": row["source"], "currency": row["currency"],
-                            })
-                            st.session_state["flash"] = "更新好了"
-                            refresh()
-                        except ApiError as e:
-                            st.error(f"更新失敗：{e}")
-                    if b2.form_submit_button("🗑️ 刪除", width="stretch"):
-                        try:
-                            client.delete_txn(rid)
-                            st.session_state["flash"] = "刪掉了"
-                            refresh()
-                        except ApiError as e:
-                            st.error(f"刪除失敗：{e}")
+            COLS = [0.9, 2.6, 1.4, 1.5, 1.3, 0.7, 0.8]
+            with st.container(key="dtl"):
+                h = st.columns(COLS)
+                for i, label in enumerate(["日期", "品項", "分類", "付款人",
+                                           "金額", "分攤", ""]):
+                    h[i].markdown(f'<div class="dtl-th">{label}</div>',
+                                  unsafe_allow_html=True)
+                shown = rows.head(50)
+                for r in shown.itertuples():
+                    c = st.columns(COLS, vertical_alignment="center")
+                    c[0].markdown(f'<span class="dtl-mut">{r.date.strftime("%m/%d")}</span>',
+                                  unsafe_allow_html=True)
+                    loc = (f'<br><span class="loc-pill">📍 {r.location}</span>'
+                           if r.location else "")
+                    c[1].markdown(f'{r.item}{loc}', unsafe_allow_html=True)
+                    c[2].markdown(cat_label(r.category))
+                    c[3].markdown(chip(r.person, names, colors),
+                                  unsafe_allow_html=True)
+                    sign = "+" if r.type == "income" else ""
+                    color = "#34A853" if r.type == "income" else "#1C1C1E"
+                    c[4].markdown(f'<span class="dtl-amt" style="color:{color}">'
+                                  f'{sign}{sym(r.currency)}{r.amount:,.2f}</span>',
+                                  unsafe_allow_html=True)
+                    split_txt = ("收入" if r.type == "income"
+                                 else SPLIT_LABEL.get(r.split, r.split))
+                    c[5].markdown(f'<span class="dtl-mut">{split_txt}</span>',
+                                  unsafe_allow_html=True)
+                    with c[6]:
+                        b1, b2 = st.columns(2)
+                        if b1.button("✏️", key=f"ed_{r.id}", type="tertiary",
+                                     help="編輯"):
+                            edit_dlg(r.id)
+                        if b2.button("🗑️", key=f"dl_{r.id}", type="tertiary",
+                                     help="刪除"):
+                            del_dlg(r.id)
+                if len(rows) > 50:
+                    st.caption(f"只顯示最近 50 筆（共 {len(rows)} 筆），"
+                               "用上面的篩選縮小範圍")

@@ -3,7 +3,7 @@ import streamlit as st
 
 from ui._shared import secret
 
-st.set_page_config(page_title="我們的記帳本", page_icon="💰", layout="wide")
+st.set_page_config(page_title="我們的記帳本", page_icon="💕", layout="wide")
 st.logo("assets/logo.svg", size="large")
 
 # 全站視覺（照舊版設計）：淺灰底、白卡片、藍進度條、人徽章、明細表。
@@ -104,6 +104,19 @@ st.markdown(
     [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stElementContainer"]:has(
       > [data-testid="stButtonGroup"]) {
       align-self: flex-end !important;
+    }
+
+    /* 明細清單（原生列版）：緊湊列距 + 底線 + 小圖示按鈕 */
+    .st-key-dtl [data-testid="stVerticalBlock"] { gap: 0.15rem; }
+    .st-key-dtl > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
+      border-bottom: 1px solid #F4F4F2; padding-bottom: 0.25rem;
+    }
+    .dtl-th  { color: #9A9A98; font-size: 0.85rem; }
+    .dtl-mut { color: #8A8A88; font-size: 0.88rem; }
+    .dtl-amt { font-weight: 700; font-variant-numeric: tabular-nums;
+               white-space: nowrap; }
+    .st-key-dtl [data-testid="stBaseButton-tertiary"] {
+      padding: 0 4px; min-height: 1.7rem; font-size: 0.95rem;
     }
 
     /* 損益表 */

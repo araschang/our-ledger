@@ -143,6 +143,54 @@ def by_location(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     return out
 
 
+def pnl(df: pd.DataFrame, fixed_cats: list[str],
+        month: str | None = None) -> dict:
+    """個人損益表：收入 → 固定支出 → 可支配餘裕 → 變動支出 → 淨存。
+
+    回傳 {'income', 'fixed', 'variable', 'disposable', 'net',
+          'save_rate', 'fixed_ratio',
+          'income_by', 'fixed_by', 'variable_by'}（*_by = {分類: 金額} 由大到小）
+    """
+    sub = df[df["month"] == month] if month else df
+    inc = sub[sub["type"] == "income"]
+    exp = sub[sub["type"] == "expense"]
+    fixed = exp[exp["category"].isin(fixed_cats)]
+    var = exp[~exp["category"].isin(fixed_cats)]
+
+    def by_cat(d):
+        if d.empty:
+            return {}
+        s = d.groupby("category")["amount"].sum().sort_values(ascending=False)
+        return {k: float(v) for k, v in s.items()}
+
+    income = float(inc["amount"].sum())
+    fixed_t = float(fixed["amount"].sum())
+    var_t = float(var["amount"].sum())
+    net = income - fixed_t - var_t
+    return {
+        "income": income, "fixed": fixed_t, "variable": var_t,
+        "disposable": income - fixed_t, "net": net,
+        "save_rate": (net / income) if income > 0 else None,
+        "fixed_ratio": (fixed_t / income) if income > 0 else None,
+        "income_by": by_cat(inc), "fixed_by": by_cat(fixed),
+        "variable_by": by_cat(var),
+    }
+
+
+def pnl_yearly(df: pd.DataFrame, fixed_cats: list[str],
+               year: str) -> pd.DataFrame:
+    """某年逐月損益。columns: month, income, fixed, variable, net, save_rate"""
+    sub = df[df["month"].str.startswith(year)]
+    rows = []
+    for m in sorted(sub["month"].unique()):
+        p = pnl(sub, fixed_cats, month=m)
+        rows.append({"month": m, "income": p["income"], "fixed": p["fixed"],
+                     "variable": p["variable"], "net": p["net"],
+                     "save_rate": p["save_rate"]})
+    return pd.DataFrame(rows, columns=["month", "income", "fixed",
+                                       "variable", "net", "save_rate"])
+
+
 def settlement(df: pd.DataFrame, people: list[dict],
                month: str | None = None,
                rates: dict | None = None) -> dict:

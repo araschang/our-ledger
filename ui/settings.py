@@ -2,7 +2,7 @@
 import streamlit as st
 
 from lib.api import ApiError
-from ui._shared import cat_label, load, refresh
+from ui._shared import cat_label, fixed_cats, load, refresh
 
 st.title("⚙️ 設定")
 
@@ -22,6 +22,12 @@ if ctx:
         st.markdown("**收入分類**")
         inc = st.text_area("income", value="\n".join(meta["categories"]["income"]),
                            height=120, label_visibility="collapsed")
+        st.markdown("**固定支出分類**（損益表用：房租、水電這種每月躲不掉的）")
+        new_fixed = st.multiselect(
+            "fixed", meta["categories"]["expense"],
+            default=[c for c in fixed_cats(meta)
+                     if c in meta["categories"]["expense"]],
+            format_func=cat_label, label_visibility="collapsed")
         st.markdown("**每月預算**（0 = 不設；設了的分類會出現在總覽的預算卡）")
         budgets = meta.get("budgets") or {}
         new_budgets = {}
@@ -38,6 +44,7 @@ if ctx:
                     "income": [l.strip() for l in inc.splitlines() if l.strip()],
                 },
                 "budgets": {c: v for c, v in new_budgets.items() if v > 0},
+                "fixed_categories": new_fixed,
             }
             try:
                 client.save_meta(new_meta)

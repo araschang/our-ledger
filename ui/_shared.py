@@ -29,6 +29,17 @@ CAT_EMOJI = {
 SPLIT_LABEL = {"half": "平分", "own": "自己", "advance": "代墊"}
 
 
+DEFAULT_FIXED = ["居住", "水電網路", "訂閱"]  # 固定支出分類預設
+
+
+def fixed_cats(meta: dict) -> list[str]:
+    """固定支出分類：meta 有設就用設的，否則用預設 ∩ 現有分類。"""
+    saved = meta.get("fixed_categories")
+    if saved:
+        return list(saved)
+    return [c for c in DEFAULT_FIXED if c in meta["categories"]["expense"]]
+
+
 def cat_label(c: str) -> str:
     emoji = CAT_EMOJI.get(c, "🏷️")
     return f"{emoji} {c}"

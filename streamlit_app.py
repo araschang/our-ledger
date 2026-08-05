@@ -86,6 +86,17 @@ st.markdown(
                       font-variant-numeric: tabular-nums; }
     table.dt td.mut { color: #8A8A88; }
 
+    /* 損益表 */
+    table.pl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    table.pl td { padding: 7px 8px; }
+    table.pl .sec td { font-weight: 700; border-top: 1px solid #EFEFED; }
+    table.pl .sub td { color: #8A8A88; font-size: 0.84rem; padding: 4px 8px 4px 26px; }
+    table.pl .tot td { font-weight: 800; border-top: 2px solid #1C1C1E;
+                       border-bottom: 3px double #1C1C1E; }
+    table.pl td.num { text-align: right; font-variant-numeric: tabular-nums;
+                      white-space: nowrap; }
+    table.dt tr.tot td { font-weight: 800; border-top: 2px solid #1C1C1E; }
+
     /* 圓餅圖自製圖例 */
     .lg-row { display: flex; justify-content: space-between; font-size: 0.85rem;
               margin: 0.3rem 0; }
@@ -141,6 +152,7 @@ if password_gate():
         st.Page("ui/record.py", title="記一筆", icon="✍️", default=True),
         st.Page("ui/overview.py", title="總覽", icon="📊", url_path="overview"),
         st.Page("ui/categories.py", title="分類分析", icon="🧾", url_path="categories"),
+        st.Page("ui/pnl.py", title="損益表", icon="📑", url_path="pnl"),
         st.Page("ui/trends.py", title="收支趨勢", icon="📈", url_path="trends"),
         st.Page("ui/settings.py", title="設定", icon="⚙️", url_path="settings"),
     ])

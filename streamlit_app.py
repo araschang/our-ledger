@@ -18,8 +18,8 @@ st.markdown(
       letter-spacing: 0.01em;
     }
     [data-testid="stMetric"] {
-      background: #2B2420;
-      border: 1px solid #3D332C;
+      background: #1E2128;
+      border: 1px solid #2C303A;
       border-radius: 0.75rem;
       padding: 0.9rem 1rem 0.8rem;
     }
@@ -29,7 +29,7 @@ st.markdown(
       font-size: 1.6rem;
       font-variant-numeric: tabular-nums;
     }
-    [data-testid="stMetricLabel"] { color: #A6988A; }
+    [data-testid="stMetricLabel"] { color: #9AA0AC; }
 
     /* 雙人結算卡 */
     .duo-card {
@@ -39,8 +39,8 @@ st.markdown(
       margin: 0.2rem 0 0.4rem;
     }
     .duo-side, .duo-mid {
-      background: #2B2420;
-      border: 1px solid #3D332C;
+      background: #1E2128;
+      border: 1px solid #2C303A;
       border-radius: 0.75rem;
       padding: 0.9rem 1rem;
       text-align: center;
@@ -50,12 +50,12 @@ st.markdown(
                 font-size: 1.05rem; color: var(--pc); }
     .duo-paid { font-family: 'IBM Plex Mono', monospace; font-weight: 600;
                 font-size: 1.15rem; margin-top: 0.35rem; }
-    .duo-sub  { color: #A6988A; font-size: 0.78rem; margin-top: 0.2rem; }
+    .duo-sub  { color: #9AA0AC; font-size: 0.78rem; margin-top: 0.2rem; }
     .duo-verdict { font-size: 0.95rem; }
     .duo-amt  { font-family: 'IBM Plex Mono', monospace; font-weight: 600;
                 font-size: 1.7rem; color: #E4B95B; margin-top: 0.15rem; }
     .duo-even { font-size: 1.35rem; margin-top: 0.4rem; }
-    .duo-foot { color: #A6988A; font-size: 0.82rem; margin-bottom: 0.6rem; }
+    .duo-foot { color: #9AA0AC; font-size: 0.82rem; margin-bottom: 0.6rem; }
     @media (max-width: 640px) {
       .duo-card { grid-template-columns: 1fr; }
     }

@@ -29,7 +29,8 @@ if ctx:
         fig.add_scatter(x=cn["month"], y=cn["cum_net"], mode="lines+markers",
                         fill="tozeroy", line=dict(color=NET_C), name="累積淨存")
         fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
-                          yaxis_title=f"{S}")
+                          yaxis_title=f"{S}",
+                          xaxis=dict(type="category"))  # 月資料別被當日期軸展開
         st.plotly_chart(fig, width="stretch")
 
         col_l, col_r = st.columns(2)
@@ -44,7 +45,8 @@ if ctx:
                             marker_color=[INCOME_C if v >= 0 else EXPENSE_C
                                           for v in sr["save_rate"]])
                 fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
-                                  yaxis_tickformat=".0%")
+                                  yaxis_tickformat=".0%",
+                                  xaxis=dict(type="category"))
                 st.plotly_chart(fig, width="stretch")
         with col_r:
             st.subheader("📅 星期幾最會花錢")

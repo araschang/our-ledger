@@ -3,5 +3,5 @@
   <circle cx="19" cy="24" r="10" fill="#E8834E"/>
   <circle cx="33" cy="24" r="10" fill="#5B8DBE" fill-opacity="0.88"/>
   <text x="54" y="31" font-family="'Noto Serif TC','PingFang TC',serif"
-        font-size="20" font-weight="700" fill="#F0E7DC">我們的記帳本</text>
+        font-size="20" font-weight="700" fill="#E9EAEE">我們的記帳本</text>
 </svg>

@@ -1,12 +1,12 @@
-# 視覺主題：「兩個人的帳本」— 暖炭底、米墨字、柿橙×靛藍雙人色
+# 視覺主題：石墨黑底 + 柿橙×靛藍雙人色
 [theme]
 base = "dark"
 primaryColor = "#E8834E"                 # 柿橙（互動色 / Diana）
-backgroundColor = "#211B18"              # 暖炭
-secondaryBackgroundColor = "#2B2420"     # 炭紙（卡片/輸入框）
-textColor = "#F0E7DC"                    # 米墨
+backgroundColor = "#16181D"              # 石墨黑
+secondaryBackgroundColor = "#1E2128"     # 石墨面（卡片/輸入框）
+textColor = "#E9EAEE"
 linkColor = "#E8834E"
-borderColor = "#3D332C"
+borderColor = "#2C303A"
 baseRadius = "0.75rem"
 chartCategoricalColors = [
   "#E8834E", "#5B8DBE", "#6FAF7C", "#E4B95B", "#B07CC6",
@@ -14,4 +14,4 @@ chartCategoricalColors = [
 ]
 
 [theme.sidebar]
-backgroundColor = "#1B1613"
+backgroundColor = "#121419"

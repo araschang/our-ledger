@@ -74,7 +74,8 @@ if ctx:
             fig.add_scatter(x=m12["month"], y=m12["net"], name="淨存",
                             mode="lines+markers", line=dict(color=NET_C))
             fig.update_layout(barmode="group", margin=dict(l=20, r=20, t=10, b=20),
-                              legend=dict(orientation="h", y=1.1), height=320)
+                              legend=dict(orientation="h", y=1.1), height=320,
+                              xaxis=dict(type="category"))  # 月資料別被當日期軸展開
             st.plotly_chart(fig, width="stretch")
         with col_r:
             st.subheader(f"🧾 {month} 分類")

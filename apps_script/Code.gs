@@ -23,23 +23,39 @@
 const SHEET_ID = 'PASTE_YOUR_SPREADSHEET_ID_HERE';
 const TOKEN = 'CHANGE_ME'; // 跟 Streamlit secrets / Shortcut 裡填一樣的
 
+const TZ = 'America/Vancouver'; // 「今天」以溫哥華為準（主機/帳號時區都不可靠）
+
 const TXN_SHEET = 'Transactions';
 const META_SHEET = 'Meta';
 const HEADERS = ['id', 'created_at', 'date', 'person', 'type', 'category',
-                 'item', 'amount', 'note', 'location', 'shared', 'source'];
+                 'item', 'amount', 'note', 'location', 'shared', 'source', 'currency'];
+
+let SS_ = null;
+function ss_() {
+  if (!SS_) SS_ = SpreadsheetApp.openById(SHEET_ID);
+  return SS_;
+}
 
 function sheet_(name, headers) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const ss = ss_();
   let sh = ss.getSheetByName(name);
   if (!sh) sh = ss.insertSheet(name);
-  if (sh.getLastRow() === 0 && headers) sh.appendRow(headers);
+  if (sh.getLastRow() === 0 && headers) {
+    sh.appendRow(headers);
+  } else if (headers &&
+             sh.getRange(1, 1, 1, headers.length).getValues()[0].join('') !==
+             headers.join('')) {
+    // schema 升級：新欄位一律加在最後，覆寫表頭列即可、舊資料位置不變
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
   return sh;
 }
 
 function fmtDate_(v) {
-  // 不用 instanceof：Apps Script V8 的 instanceof Date 有時會誤判
+  // 不用 instanceof：Apps Script V8 的 instanceof Date 有時會誤判。
+  // 日期儲存格是「試算表時區的午夜」，要用試算表時區格式化才不會差一天。
   if (v && typeof v.getFullYear === 'function') {
-    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return Utilities.formatDate(v, ss_().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
   }
   return String(v || '').slice(0, 10);
 }
@@ -58,6 +74,7 @@ function rowToTxn_(row, idx) {
     location: String(row[idx.location] || ''),
     shared: String(row[idx.shared]).toUpperCase() === 'TRUE',
     source: String(row[idx.source] || ''),
+    currency: (idx.currency >= 0 && row[idx.currency]) ? String(row[idx.currency]) : 'CAD',
   };
 }
 
@@ -71,6 +88,7 @@ function txnToRow_(t) {
     t.id, t.created_at || '', t.date || '', t.person || '', t.type || 'expense',
     t.category || 'other', t.item || '', Number(t.amount) || 0, t.note || '',
     t.location || '', toBool_(t.shared) ? 'TRUE' : 'FALSE', t.source || '',
+    t.currency || 'CAD',
   ];
 }
 
@@ -149,7 +167,7 @@ function doPost(e) {
       const t = body.txn || {};
       if (!t.id) t.id = Utilities.getUuid().slice(0, 8);
       if (!t.created_at) {
-        t.created_at = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
+        t.created_at = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd'T'HH:mm:ss");
       }
       if (!t.date) t.date = t.created_at.slice(0, 10);
       sh.appendRow(txnToRow_(t));

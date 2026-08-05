@@ -1,4 +1,7 @@
 """我們的記帳本 — Streamlit 前端（記帳表單 + 儀表板）。"""
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -8,8 +11,21 @@ from lib.api import ApiError, GasClient
 
 st.set_page_config(page_title="我們的記帳本", page_icon="💰", layout="centered")
 
-SYMBOL = "CA$"
-MD_SYMBOL = "CA\\$"  # markdown 語境用（st.success/caption 會把成對 $ 當 LaTeX）
+TZ = ZoneInfo("America/Vancouver")  # 「今天」以溫哥華為準，別用主機(UTC)時間
+CURRENCIES = {"CAD": "CA$", "USD": "US$", "TWD": "NT$"}
+
+
+def today():
+    return datetime.now(TZ).date()
+
+
+def sym(currency: str) -> str:
+    return CURRENCIES.get(currency, f"{currency} ")
+
+
+def md_sym(currency: str) -> str:
+    # markdown 語境用（st.success/caption 會把成對 $ 當 LaTeX）
+    return sym(currency).replace("$", "\\$")
 DEFAULT_META = {
     "people": [
         {"id": "aya", "name": "Diana"},
@@ -91,9 +107,11 @@ def render_add_form(client: GasClient, meta: dict):
     with st.form("add", clear_on_submit=True):
         category = st.selectbox("分類", cats["expense" if ttype == "expense" else "income"])
         item = st.text_input("品項", placeholder="例：Costco 採買")
-        amount = st.number_input(f"金額（{SYMBOL}）", min_value=0.0, step=1.0,
+        a1, a2 = st.columns([3, 1])
+        amount = a1.number_input("金額", min_value=0.0, step=1.0,
                                  format="%.2f", value=None, placeholder="多少錢")
-        date = st.date_input("日期", value="today")
+        currency = a2.selectbox("幣別", list(CURRENCIES), index=0)
+        date = st.date_input("日期", value=today())
         shared = True
         if ttype == "expense":
             shared = st.checkbox("共同開銷（兩人分攤）", value=True)
@@ -113,9 +131,9 @@ def render_add_form(client: GasClient, meta: dict):
                         "amount": round(float(amount), 2), "note": note.strip(),
                         "location": location.strip(),
                         "shared": bool(shared) if ttype == "expense" else False,
-                        "source": "web",
+                        "source": "web", "currency": currency,
                     })
-                    st.session_state["flash"] = f"記好了：{item.strip()} {SYMBOL}{amount:,.2f}"
+                    st.session_state["flash"] = f"記好了：{item.strip()} {sym(currency)}{amount:,.2f}"
                     refresh()
                 except ApiError as e:
                     st.error(f"存檔失敗：{e}")
@@ -156,15 +174,20 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
     people = meta["people"]
     names = {p["id"]: p["name"] for p in people}
 
-    view = st.segmented_control(
+    v1, v2 = st.columns([3, 2])
+    view = v1.segmented_control(
         "視角", ["all"] + [p["id"] for p in people],
         format_func=lambda v: "👫 綜合" if v == "all" else names[v],
         default="all")
-    sub = analytics.filter_person(df, None if view in (None, "all") else view)
+    currency = v2.segmented_control("幣別", list(CURRENCIES), default="CAD") or "CAD"
+    S, MS = sym(currency), md_sym(currency)
+
+    cdf = df[df["currency"] == currency]  # 不同幣別不能混加，統計各看各的
+    sub = analytics.filter_person(cdf, None if view in (None, "all") else view)
 
     months = sorted(sub["month"].unique(), reverse=True) if not sub.empty else []
     if not months:
-        st.info("還沒有任何記錄，先去「記一筆」開張吧！")
+        st.info(f"還沒有 {currency} 的記錄，先去「記一筆」開張吧！")
         return
     month = st.selectbox("月份", months, index=0)
 
@@ -176,12 +199,12 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
             if len(prev_idx) and prev_idx[0] > 0 else None)
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("本月支出", f"{SYMBOL}{cur['expense']:,.0f}",
+    c1.metric("本月支出", f"{S}{cur['expense']:,.0f}",
               delta=(f"{cur['expense'] - prev['expense']:+,.0f}" if prev is not None else None),
               delta_color="inverse")
-    c2.metric("本月收入", f"{SYMBOL}{cur['income']:,.0f}",
+    c2.metric("本月收入", f"{S}{cur['income']:,.0f}",
               delta=(f"{cur['income'] - prev['income']:+,.0f}" if prev is not None else None))
-    c3.metric("本月淨存", f"{SYMBOL}{cur['net']:,.0f}")
+    c3.metric("本月淨存", f"{S}{cur['net']:,.0f}")
 
     st.subheader("📈 月度收支趨勢")
     trend_chart(analytics.monthly_summary(sub, last_n=12))
@@ -193,12 +216,12 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
     else:
         donut_chart(bd)
 
-    st.subheader("🤝 誰欠誰（共同開銷對半）")
-    s_month = analytics.settlement(df, people, month=month)
-    s_all = analytics.settlement(df, people)
-    st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {MD_SYMBOL}{s_month['total']:,.2f}）")
+    st.subheader(f"🤝 誰欠誰（{currency} 共同開銷對半）")
+    s_month = analytics.settlement(cdf, people, month=month)
+    s_all = analytics.settlement(cdf, people)
+    st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {MS}{s_month['total']:,.2f}）")
     st.caption(f"累計：{s_all['msg']}　"
-               + "　".join(f"{names[pid]} 已付 {MD_SYMBOL}{amt:,.2f}"
+               + "　".join(f"{names[pid]} 已付 {MS}{amt:,.2f}"
                            for pid, amt in s_all["paid"].items()))
 
     st.subheader("🕘 最近記錄")
@@ -206,7 +229,7 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
     recent["人"] = recent["person"].map(names).fillna(recent["person"])
     recent["日期"] = recent["date"].dt.strftime("%m/%d")
     recent["金額"] = recent.apply(
-        lambda r: f"{'+' if r['type'] == 'income' else '-'}{r['amount']:,.2f}", axis=1)
+        lambda r: f"{'+' if r['type'] == 'income' else '-'}{sym(r['currency'])}{r['amount']:,.2f}", axis=1)
     recent["共同"] = recent["shared"].map({True: "👫", False: ""})
     st.dataframe(recent[["日期", "人", "category", "item", "金額", "共同", "note"]],
                  width="stretch", hide_index=True,

@@ -2,7 +2,7 @@
 import pandas as pd
 
 COLUMNS = ["id", "created_at", "date", "person", "type", "category",
-           "item", "amount", "note", "location", "shared", "source"]
+           "item", "amount", "note", "location", "shared", "source", "currency"]
 
 
 def to_df(transactions: list) -> pd.DataFrame:
@@ -10,6 +10,7 @@ def to_df(transactions: list) -> pd.DataFrame:
     df = pd.DataFrame(transactions, columns=COLUMNS)
     for col in ("item", "note", "location", "category", "person", "type", "source"):
         df[col] = df[col].fillna("")
+    df["currency"] = df["currency"].fillna("").replace("", "CAD")  # 舊資料沒這欄=CAD
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
     df["shared"] = df["shared"].astype(bool)
     df["date"] = pd.to_datetime(df["date"], errors="coerce")

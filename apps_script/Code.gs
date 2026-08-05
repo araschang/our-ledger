@@ -37,7 +37,10 @@ function sheet_(name, headers) {
 }
 
 function fmtDate_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  // 不用 instanceof：Apps Script V8 的 instanceof Date 有時會誤判
+  if (v && typeof v.getFullYear === 'function') {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
   return String(v || '').slice(0, 10);
 }
 

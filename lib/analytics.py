@@ -19,6 +19,14 @@ def to_df(transactions: list) -> pd.DataFrame:
     return df
 
 
+def to_cad(df: pd.DataFrame, rates: dict) -> pd.DataFrame:
+    """把 amount 全部換算成 CAD（rates: 幣別→CAD，缺的當 1.0）。"""
+    out = df.copy()
+    out["amount"] = out["amount"] * out["currency"].map(
+        lambda c: float(rates.get(c, 1.0)))
+    return out
+
+
 def filter_person(df: pd.DataFrame, person: str | None) -> pd.DataFrame:
     """person=None 代表綜合視角。"""
     if person is None:

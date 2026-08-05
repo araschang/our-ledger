@@ -191,20 +191,19 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
     people = meta["people"]
     names = {p["id"]: p["name"] for p in people}
 
-    v1, v2 = st.columns([3, 2])
-    view = v1.segmented_control(
+    view = st.segmented_control(
         "視角", ["all"] + [p["id"] for p in people],
         format_func=lambda v: "👫 綜合" if v == "all" else names[v],
         default="all")
-    currency = v2.segmented_control("幣別", list(CURRENCIES), default="CAD") or "CAD"
-    S, MS = sym(currency), md_sym(currency)
 
-    cdf = df[df["currency"] == currency]  # 不同幣別不能混加，統計各看各的
+    rates = fetch_rates()
+    cdf = analytics.to_cad(df, rates)  # 全部換算成 CAD 統計
+    S = sym("CAD")
     sub = analytics.filter_person(cdf, None if view in (None, "all") else view)
 
     months = sorted(sub["month"].unique(), reverse=True) if not sub.empty else []
     if not months:
-        st.info(f"還沒有 {currency} 的記錄，先去「記一筆」開張吧！")
+        st.info("還沒有任何記錄，先去「記一筆」開張吧！")
         return
     month = st.selectbox("月份", months, index=0)
 
@@ -234,17 +233,16 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
         donut_chart(bd)
 
     st.subheader("🤝 誰欠誰（共同開銷對半，CAD 結算）")
-    rates = fetch_rates()
-    s_month = analytics.settlement(df, people, month=month, rates=rates)
-    s_all = analytics.settlement(df, people, rates=rates)
+    s_month = analytics.settlement(cdf, people, month=month)
+    s_all = analytics.settlement(cdf, people)
     cms = md_sym("CAD")
     st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {cms}{s_month['total']:,.2f}）")
     st.caption(f"累計：{s_all['msg']}　"
                + "　".join(f"{names[pid]} 已付 {cms}{amt:,.2f}"
                            for pid, amt in s_all["paid"].items()))
-    foreign = sorted(set(df[(df["type"] == "expense") & df["shared"]]["currency"]) - {"CAD"})
+    foreign = sorted(set(df["currency"]) - {"CAD"})
     if foreign:
-        st.caption("匯率（每日更新）：" + "　".join(
+        st.caption("外幣已按匯率換算（每日更新）：" + "　".join(
             f"{c}→CAD {rates.get(c, 1.0):.3f}" for c in foreign))
 
     st.subheader("🕘 最近記錄")

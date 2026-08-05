@@ -33,9 +33,9 @@ DEFAULT_FIXED = ["居住", "水電網路", "訂閱"]  # 固定支出分類預設
 
 
 def fixed_cats(meta: dict) -> list[str]:
-    """固定支出分類：meta 有設就用設的，否則用預設 ∩ 現有分類。"""
+    """固定支出分類：meta 有設就用設的（空清單=真的沒有），否則預設 ∩ 現有分類。"""
     saved = meta.get("fixed_categories")
-    if saved:
+    if saved is not None:
         return list(saved)
     return [c for c in DEFAULT_FIXED if c in meta["categories"]["expense"]]
 
@@ -153,8 +153,10 @@ def load() -> dict | None:
         if st.button("重試"):
             refresh()
         return None
+    # 空 list 要保留（例：fixed_categories=[] = 使用者明確說沒有固定支出）
     meta = {**DEFAULT_META,
-            **{k: v for k, v in (data.get("meta") or {}).items() if v}}
+            **{k: v for k, v in (data.get("meta") or {}).items()
+               if v or isinstance(v, list)}}
     df = analytics.to_df(data.get("transactions") or [])
     cdf = analytics.to_cad(df, fetch_rates())  # 統計一律用這個（全 CAD）
     ids = [p["id"] for p in meta["people"]]

@@ -16,8 +16,12 @@ if ctx:
         month = st.selectbox("月份", months, index=0)
         p = analytics.pnl(sub, fixed, month=month)
         idx = months.index(month)
-        prev = (analytics.pnl(sub, fixed, month=months[idx + 1])
-                if idx + 1 < len(months) else None)
+        # 「vs 上月」只在日曆相鄰月才顯示，中間斷檔就不比
+        y, mo = int(month[:4]), int(month[5:7])
+        expect_prev = f"{y - 1}-12" if mo == 1 else f"{y}-{mo - 1:02d}"
+        prev = (analytics.pnl(sub, fixed, month=expect_prev)
+                if idx + 1 < len(months) and months[idx + 1] == expect_prev
+                else None)
 
         def fmt(v):
             return f"CA&#36;{v:,.2f}"

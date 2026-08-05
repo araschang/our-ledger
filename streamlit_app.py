@@ -127,7 +127,8 @@ def render_add_form(client: GasClient, meta: dict):
         a1, a2 = st.columns([3, 1])
         amount = a1.number_input("金額", min_value=0.0, step=1.0,
                                  format="%.2f", value=None, placeholder="多少錢")
-        currency = a2.selectbox("幣別", list(CURRENCIES), index=0)
+        currency = a2.selectbox("幣別", list(CURRENCIES), index=0,
+                                help="選 USD/TWD 會以當下匯率換成 CAD 入帳，原幣金額記在備註")
         date = st.date_input("日期", value=today())
         shared = True
         if ttype == "expense":
@@ -141,16 +142,27 @@ def render_add_form(client: GasClient, meta: dict):
             elif not item.strip():
                 st.error("品項不能空白")
             else:
+                save_amount = round(float(amount), 2)
+                save_note = note.strip()
+                flash = f"記好了：{item.strip()} {sym(currency)}{save_amount:,.2f}"
+                if currency != "CAD":
+                    # 記帳當下鎖匯率換成 CAD，原幣與匯率留在備註可追溯
+                    rate = fetch_rates().get(currency, FALLBACK_RATES.get(currency, 1.0))
+                    cad_amt = round(save_amount * rate, 2)
+                    orig = f"原幣 {sym(currency)}{save_amount:,.2f} @{rate:.4f}"
+                    save_note = f"{orig}｜{save_note}" if save_note else orig
+                    save_amount = cad_amt
+                    flash += f" → CA${cad_amt:,.2f}"
                 try:
                     client.add_txn({
                         "date": str(date), "person": person, "type": ttype,
                         "category": category, "item": item.strip(),
-                        "amount": round(float(amount), 2), "note": note.strip(),
+                        "amount": save_amount, "note": save_note,
                         "location": location.strip(),
                         "shared": bool(shared) if ttype == "expense" else False,
-                        "source": "web", "currency": currency,
+                        "source": "web", "currency": "CAD",
                     })
-                    st.session_state["flash"] = f"記好了：{item.strip()} {sym(currency)}{amount:,.2f}"
+                    st.session_state["flash"] = flash
                     refresh()
                 except ApiError as e:
                     st.error(f"存檔失敗：{e}")

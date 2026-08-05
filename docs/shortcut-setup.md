@@ -1,7 +1,7 @@
 # iPhone 捷徑安裝（手機 10 秒記一筆）
 
 做一個「記帳」捷徑：點一下（或喊 Siri）→ 選分類 → 打品項 → 打金額 → 完成。
-兩人各裝一份，**只有 person 那格不一樣**（Diana 填 `aya`、Aras 填 `aras`）。
+兩人各裝一份，**只有 person 那格不一樣**（Diana 填 `diana`、Aras 填 `aras`）。
 
 ## 建立步驟（捷徑 App）
 
@@ -24,7 +24,7 @@
    - txn 子字典：
      | 鍵 | 型別 | 值 |
      |---|---|---|
-     | person | 文字 | `aya` 或 `aras`（← 兩人唯一的差別） |
+     | person | 文字 | `diana` 或 `aras`（← 兩人唯一的差別） |
      | type | 文字 | `expense` |
      | category | 文字 | 變數：**從清單中選取的結果** |
      | item | 文字 | 變數：**步驟3的輸入** |

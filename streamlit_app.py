@@ -30,7 +30,7 @@ def md_sym(currency: str) -> str:
     return sym(currency).replace("$", "\\$")
 DEFAULT_META = {
     "people": [
-        {"id": "aya", "name": "Diana"},
+        {"id": "diana", "name": "Diana"},
         {"id": "aras", "name": "Aras"},
     ],
     "categories": {

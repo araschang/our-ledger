@@ -1,17 +1,17 @@
-# 視覺主題：石墨黑底 + 柿橙×靛藍雙人色
+# 視覺主題：淺色卡片式（照舊版 our-ledger 的設計）
 [theme]
-base = "dark"
-primaryColor = "#E8834E"                 # 柿橙（互動色 / Diana）
-backgroundColor = "#16181D"              # 石墨黑
-secondaryBackgroundColor = "#1E2128"     # 石墨面（卡片/輸入框）
-textColor = "#E9EAEE"
-linkColor = "#E8834E"
-borderColor = "#2C303A"
+base = "light"
+primaryColor = "#3B6FE0"                 # 藍（互動色）
+backgroundColor = "#F6F6F4"              # 淺灰底
+secondaryBackgroundColor = "#FFFFFF"     # 白卡片
+textColor = "#1C1C1E"
+linkColor = "#3B6FE0"
+borderColor = "#E7E7E4"
 baseRadius = "0.75rem"
 chartCategoricalColors = [
-  "#E8834E", "#5B8DBE", "#6FAF7C", "#E4B95B", "#B07CC6",
-  "#D96A55", "#8A9A5B", "#C98CA7", "#7FA6A0", "#A98467",
+  "#3B6FE0", "#E8823E", "#34A853", "#E5484D", "#8E67D6",
+  "#E5A63B", "#5B8DBE", "#C98CA7", "#7FA6A0", "#A98467",
 ]
 
 [theme.sidebar]
-backgroundColor = "#121419"
+backgroundColor = "#FFFFFF"

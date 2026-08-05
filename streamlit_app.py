@@ -6,59 +6,77 @@ from ui._shared import secret
 st.set_page_config(page_title="我們的記帳本", page_icon="💰", layout="wide")
 st.logo("assets/logo.svg", size="large")
 
-# 全站視覺：標題明體（家計簿印刷感）、金額收據等寬體、metric 卡片化、
-# 雙人結算卡；手機版縮 padding + 多欄換行（抄 awm 的做法）
+# 全站視覺（照舊版設計）：淺灰底、白卡片、藍進度條、人徽章、明細表。
+# 卡片 = st.container(border=True) 加 CSS。
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+    /* 卡片容器 */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+      background: #FFFFFF;
+      border: 1px solid #ECECEA !important;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      padding: 0.4rem 0.6rem;
+    }
+    .card-title { font-weight: 700; font-size: 1.0rem; margin: 0.1rem 0 0.5rem; }
+    .card-sub   { color: #8A8A88; font-size: 0.8rem; }
 
-    h1, h2, h3 {
-      font-family: 'Fraunces', 'Noto Serif TC', 'PingFang TC', serif !important;
-      letter-spacing: 0.01em;
-    }
-    [data-testid="stMetric"] {
-      background: #1E2128;
-      border: 1px solid #2C303A;
-      border-radius: 0.75rem;
-      padding: 0.9rem 1rem 0.8rem;
-    }
-    [data-testid="stMetricValue"] {
-      font-family: 'IBM Plex Mono', monospace;
-      font-weight: 600;
-      font-size: 1.6rem;
-      font-variant-numeric: tabular-nums;
-    }
-    [data-testid="stMetricLabel"] { color: #9AA0AC; }
+    .big-num { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.01em;
+               font-variant-numeric: tabular-nums; }
 
-    /* 雙人結算卡 */
-    .duo-card {
-      display: grid;
-      grid-template-columns: 1fr 1.4fr 1fr;
-      gap: 0.6rem;
-      margin: 0.2rem 0 0.4rem;
-    }
-    .duo-side, .duo-mid {
-      background: #1E2128;
-      border: 1px solid #2C303A;
-      border-radius: 0.75rem;
-      padding: 0.9rem 1rem;
-      text-align: center;
-    }
-    .duo-side { border-top: 3px solid var(--pc); }
-    .duo-name { font-family: 'Fraunces', 'Noto Serif TC', serif; font-weight: 700;
-                font-size: 1.05rem; color: var(--pc); }
-    .duo-paid { font-family: 'IBM Plex Mono', monospace; font-weight: 600;
-                font-size: 1.15rem; margin-top: 0.35rem; }
-    .duo-sub  { color: #9AA0AC; font-size: 0.78rem; margin-top: 0.2rem; }
-    .duo-verdict { font-size: 0.95rem; }
-    .duo-amt  { font-family: 'IBM Plex Mono', monospace; font-weight: 600;
-                font-size: 1.7rem; color: #E4B95B; margin-top: 0.15rem; }
-    .duo-even { font-size: 1.35rem; margin-top: 0.4rem; }
-    .duo-foot { color: #9AA0AC; font-size: 0.82rem; margin-bottom: 0.6rem; }
-    @media (max-width: 640px) {
-      .duo-card { grid-template-columns: 1fr; }
-    }
+    /* 付款人徽章 */
+    .chip { display: inline-flex; align-items: center; gap: 6px;
+            background: #F0F4FE; color: #2F5FC7; border-radius: 999px;
+            padding: 2px 10px 2px 4px; font-size: 0.85rem; font-weight: 600;
+            white-space: nowrap; }
+    .chip-dot { width: 20px; height: 20px; border-radius: 50%; color: #fff;
+                font-size: 0.7rem; font-weight: 700; display: inline-flex;
+                align-items: center; justify-content: center; }
+
+    /* 地點小標籤 */
+    .loc-pill { display: inline-block; background: #FBE9EC; color: #D6455D;
+                border-radius: 999px; padding: 1px 9px; font-size: 0.75rem;
+                margin-top: 2px; }
+
+    /* 進度條列（地點/分類/預算） */
+    .bar-row  { margin: 0.55rem 0; }
+    .bar-head { display: flex; justify-content: space-between;
+                font-size: 0.9rem; margin-bottom: 5px; }
+    .bar-right{ color: #1C1C1E; font-weight: 700;
+                font-variant-numeric: tabular-nums; }
+    .bar-right small { color: #9A9A98; font-weight: 500; }
+    .bar-track{ height: 8px; background: #EDEDEB; border-radius: 99px; }
+    .bar-fill { height: 8px; border-radius: 99px; }
+
+    /* 分帳狀況 綠/紅列 */
+    .settle-row { display: flex; justify-content: space-between; align-items: center;
+                  border-radius: 10px; padding: 0.55rem 0.9rem; color: #fff;
+                  font-weight: 700; margin: 0.3rem 0;
+                  font-variant-numeric: tabular-nums; }
+    .settle-pos { background: #43A85C; }
+    .settle-neg { background: #E5636A; }
+    .settle-name { display: inline-flex; align-items: center; gap: 8px; }
+    .settle-dot { width: 22px; height: 22px; border-radius: 50%;
+                  background: rgba(255,255,255,0.28); display: inline-flex;
+                  align-items: center; justify-content: center; font-size: 0.75rem; }
+
+    /* 明細表 */
+    table.dt { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    table.dt th { color: #9A9A98; font-weight: 500; text-align: left;
+                  padding: 6px 8px; border-bottom: 1px solid #EFEFED; }
+    table.dt td { padding: 9px 8px; border-bottom: 1px solid #F4F4F2;
+                  vertical-align: top; }
+    table.dt td.amt { font-weight: 700; white-space: nowrap;
+                      font-variant-numeric: tabular-nums; }
+    table.dt td.mut { color: #8A8A88; }
+
+    /* 圓餅圖自製圖例 */
+    .lg-row { display: flex; justify-content: space-between; font-size: 0.85rem;
+              margin: 0.3rem 0; }
+    .lg-dot { display: inline-block; width: 10px; height: 10px;
+              border-radius: 3px; margin-right: 7px; }
+    .lg-pct { color: #9A9A98; }
 
     @media (max-width: 640px) {
       .block-container { padding: 2.5rem 0.75rem 1rem 0.75rem !important; }
@@ -70,8 +88,9 @@ st.markdown(
         min-width: 3.8rem !important;
         flex: 1 1 3.8rem !important;
       }
-      /* 圖表欄不要硬擠併排：整寬直疊 */
-      div[data-testid="stHorizontalBlock"] > div:has(.js-plotly-plot) {
+      /* 圖表/卡片欄不要硬擠併排：整寬直疊 */
+      div[data-testid="stHorizontalBlock"] > div:has(.js-plotly-plot),
+      div[data-testid="stHorizontalBlock"] > div:has([data-testid="stVerticalBlockBorderWrapper"]) {
         min-width: 100% !important;
       }
       div[data-testid="stHorizontalBlock"] > div:has([data-testid="stMetric"]) {

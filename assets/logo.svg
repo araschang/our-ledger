@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="224" height="48" viewBox="0 0 224 48">
   <!-- 兩個交疊的圓 = 兩個人、一本帳 -->
-  <circle cx="19" cy="24" r="10" fill="#E8834E"/>
-  <circle cx="33" cy="24" r="10" fill="#5B8DBE" fill-opacity="0.88"/>
-  <text x="54" y="31" font-family="'Noto Serif TC','PingFang TC',serif"
-        font-size="20" font-weight="700" fill="#E9EAEE">我們的記帳本</text>
+  <circle cx="19" cy="24" r="10" fill="#3B6FE0"/>
+  <circle cx="33" cy="24" r="10" fill="#E8823E" fill-opacity="0.9"/>
+  <text x="54" y="31" font-family="'PingFang TC',sans-serif"
+        font-size="19" font-weight="700" fill="#1C1C1E">我們的記帳本</text>
 </svg>

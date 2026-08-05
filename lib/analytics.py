@@ -175,6 +175,9 @@ def settlement(df: pd.DataFrame, people: list[dict],
         balance[pid] = (half_paid[pid] - total / n
                         + adv_paid[pid]
                         - (others_adv / (n - 1) if n > 1 else 0.0))
+    balance = {pid: round(v, 2) for pid, v in balance.items()}
+    if len(ids) == 2:  # 兩人時強制正負對稱，避免浮點分半差一分錢
+        balance[ids[1]] = -balance[ids[0]]
     paid = {pid: half_paid[pid] + adv_paid[pid] for pid in ids}
 
     msg = "兩不相欠 🎉"

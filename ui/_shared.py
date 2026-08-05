@@ -12,15 +12,51 @@ from lib.api import GasClient
 TZ = ZoneInfo("America/Vancouver")  # 「今天」以溫哥華為準，別用主機(UTC)時間
 CURRENCIES = {"CAD": "CA$", "USD": "US$", "TWD": "NT$"}
 
-# 視覺 tokens（同 .streamlit/config.toml 的主題）
-INCOME_C, EXPENSE_C, NET_C = "#6FAF7C", "#D96A55", "#E4B95B"   # 苔綠/赤/金
-DUO_COLORS = ["#E8834E", "#5B8DBE"]  # 柿橙(Diana) × 靛藍(Aras)，依 meta.people 順序
+# 視覺 tokens（同 .streamlit/config.toml 的主題；照舊版設計）
+INCOME_C, EXPENSE_C, NET_C = "#34A853", "#E5484D", "#3B6FE0"
+BAR_C = "#3B6FE0"          # 進度條藍
+BUDGET_C = "#34A853"       # 預算進度綠
+MONTH_BAR_C = "#E5788C"    # 每月總開銷粉紅
+DUO_COLORS = ["#3B6FE0", "#E8823E"]  # 藍(Diana) × 橘(Aras)，依 meta.people 順序
+
+# 分類顯示用 emoji（資料庫存純文字，畫面加圖示）
+CAT_EMOJI = {
+    "外食": "🍜", "買菜": "🥬", "居住": "🏠", "水電網路": "💡", "日用品": "🧻",
+    "家具家電": "🛋️", "交通": "🚗", "娛樂": "🎬", "醫療": "🏥", "寵物": "🐾",
+    "訂閱": "📺", "運動": "🏸", "其他": "📦",
+    "薪資": "💼", "獎金": "🎁", "投資": "📈",
+}
+SPLIT_LABEL = {"half": "平分", "own": "自己", "advance": "代墊"}
+
+
+def cat_label(c: str) -> str:
+    emoji = CAT_EMOJI.get(c, "🏷️")
+    return f"{emoji} {c}"
 
 
 def person_colors(meta: dict) -> dict:
     """person_id → 專屬色（依 meta.people 順序配雙人色）。"""
     return {p["id"]: DUO_COLORS[i % len(DUO_COLORS)]
             for i, p in enumerate(meta["people"])}
+
+
+def chip(pid: str, names: dict, colors: dict) -> str:
+    """付款人小徽章（圓形姓氏 + 名字），底色跟著人的專屬色。"""
+    name = names.get(pid, pid)
+    color = colors.get(pid, "#888")
+    return (f'<span class="chip" style="background:{color}1A;color:{color}">'
+            f'<span class="chip-dot" style="background:{color}">'
+            f'{name[:1]}</span>{name}</span>')
+
+
+def bar_row(label_html: str, right_html: str, pct: float,
+            color: str = BAR_C) -> str:
+    """一行「標籤＋金額＋進度條」（花在哪些地點/分類、預算共用）。"""
+    pct = max(0.0, min(100.0, pct))
+    return (f'<div class="bar-row"><div class="bar-head">'
+            f'<span>{label_html}</span><span class="bar-right">{right_html}</span></div>'
+            f'<div class="bar-track"><div class="bar-fill" '
+            f'style="width:{pct:.1f}%;background:{color}"></div></div></div>')
 FALLBACK_RATES = {"CAD": 1.0, "USD": 1.35, "TWD": 0.044}
 S = CURRENCIES["CAD"]          # 統計一律 CAD
 MS = S.replace("$", "\\$")     # markdown 語境（成對 $ 會被當 LaTeX）

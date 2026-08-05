@@ -1,131 +1,296 @@
-"""📊 總覽 — 當月狀態 + 誰欠誰 + 最近記錄"""
+"""📊 總覽 — 照舊版設計：月導航 + 共同開銷/分帳卡 + 預算 + 分析卡 + 明細"""
+from datetime import datetime
+
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from lib import analytics
 from lib.api import ApiError
-from ui._shared import (EXPENSE_C, INCOME_C, MS, NET_C, S, empty_hint,
-                        fetch_rates, load, person_colors, person_view, refresh, sym)
+from ui._shared import (BUDGET_C, MONTH_BAR_C, TZ, bar_row, cat_label, chip,
+                        empty_hint, load, person_colors, refresh, sym,
+                        CAT_EMOJI, SPLIT_LABEL)
+
+PIE_COLORS = ["#3B6FE0", "#E8823E", "#34A853", "#E5484D", "#8E67D6",
+              "#E5A63B", "#5B8DBE", "#C98CA7", "#7FA6A0", "#A98467"]
 
 
 def _fmt(v: float) -> str:
     return f"CA&#36;{v:,.2f}"  # HTML 語境用 &#36; 避免 markdown 把 $ 當 LaTeX
 
 
-def duo_settlement_html(s: dict, people: list, names: dict,
-                        colors: dict, subtitle: str) -> str:
-    p1, p2 = people[0], people[1]
-    sides = []
-    for p in (p1, p2):
-        sides.append(
-            f'<div class="duo-side" style="--pc:{colors[p["id"]]}">'
-            f'<div class="duo-name">{names[p["id"]]}</div>'
-            f'<div class="duo-paid">{_fmt(s["paid"][p["id"]])}</div>'
-            f'<div class="duo-sub">已付</div></div>')
-    diff = s["balance"][p1["id"]]
-    if abs(diff) < 0.005:
-        mid_main = '<div class="duo-even">兩不相欠 🎉</div>'
-    else:
-        debtor, creditor = (p2, p1) if diff > 0 else (p1, p2)
-        mid_main = (f'<div class="duo-verdict">{names[debtor["id"]]} 要給 '
-                    f'{names[creditor["id"]]}</div>'
-                    f'<div class="duo-amt">{_fmt(abs(diff))}</div>')
-    adv = s.get("advance_total", 0.0)
-    adv_txt = f'　代墊 {_fmt(adv)}' if adv > 0.005 else ""
-    mid = (f'<div class="duo-mid">{mid_main}'
-           f'<div class="duo-sub">{subtitle}　共同開銷 {_fmt(s["total"])}{adv_txt}</div></div>')
-    return f'<div class="duo-card">{sides[0]}{mid}{sides[1]}</div>'
+def month_nav(months: list[str]) -> str:
+    """‹ 2026年8月 › ＋ 本月。回傳選中的 YYYY-MM。"""
+    now_m = datetime.now(TZ).strftime("%Y-%m")
+    if "ov_month" not in st.session_state or st.session_state["ov_month"] not in months:
+        st.session_state["ov_month"] = months[0]
+    idx = months.index(st.session_state["ov_month"])  # months 是新→舊
+    c1, c2, c3, c4, _ = st.columns([0.6, 2.2, 0.6, 1.0, 6])
+    if c1.button("‹", disabled=idx >= len(months) - 1):
+        st.session_state["ov_month"] = months[idx + 1]
+        st.rerun()
+    m = st.session_state["ov_month"]
+    c2.markdown(f"### {int(m[:4])}年{int(m[5:7])}月")
+    if c3.button("›", disabled=idx <= 0):
+        st.session_state["ov_month"] = months[idx - 1]
+        st.rerun()
+    if c4.button("本月", disabled=(m == now_m or now_m not in months)):
+        st.session_state["ov_month"] = now_m
+        st.rerun()
+    return st.session_state["ov_month"]
 
-st.title("📊 總覽")
+
+def toggle(key: str) -> bool:
+    """卡片右上「本月/全部」切換，回傳 True=本月。"""
+    v = st.segmented_control(" ", ["本月", "全部"], default="本月",
+                             key=key, label_visibility="collapsed")
+    return (v or "本月") == "本月"
+
 
 ctx = load()
 if ctx:
     client, df, cdf, meta, names = (ctx["client"], ctx["df"], ctx["cdf"],
                                     ctx["meta"], ctx["names"])
-    sub = person_view(cdf, meta, key="ov_view")
-    if not empty_hint(sub):
-        months = sorted(sub["month"].unique(), reverse=True)
-        month = st.selectbox("月份", months, index=0)
+    colors = person_colors(meta)
+    people = meta["people"]
 
-        msum = analytics.monthly_summary(sub, last_n=10 ** 6)
-        row = msum[msum["month"] == month]
-        cur = row.iloc[0] if not row.empty else {"income": 0, "expense": 0, "net": 0}
-        idx = msum.index[msum["month"] == month]
-        prev = msum.iloc[idx[0] - 1] if len(idx) and idx[0] > 0 else None
+    if empty_hint(cdf):
+        st.stop()
+    months = sorted(cdf["month"].unique(), reverse=True)
+    month = month_nav(months)
+    mdf = cdf[cdf["month"] == month]
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("本月支出", f"{S}{cur['expense']:,.0f}",
-                  delta=(f"{cur['expense'] - prev['expense']:+,.0f}" if prev is not None else None),
-                  delta_color="inverse")
-        c2.metric("本月收入", f"{S}{cur['income']:,.0f}",
-                  delta=(f"{cur['income'] - prev['income']:+,.0f}" if prev is not None else None))
-        c3.metric("本月淨存", f"{S}{cur['net']:,.0f}")
+    # ---- 第一排：共同開銷 ＋ 目前分帳狀況 -------------------------------
+    s_month = analytics.settlement(cdf, people, month=month)
+    s_all = analytics.settlement(cdf, people)
+    joint_total = s_month["total"] + s_month["advance_total"]
+    joint_n = int(((mdf["type"] == "expense")
+                   & mdf["split"].isin(["half", "advance"])).sum())
 
-        col_l, col_r = st.columns([3, 2])
-        with col_l:
-            st.subheader("📈 月度收支")
-            m12 = analytics.monthly_summary(sub, last_n=12)
-            fig = go.Figure()
-            fig.add_bar(x=m12["month"], y=m12["income"], name="收入",
-                        marker_color=INCOME_C, opacity=0.85)
-            fig.add_bar(x=m12["month"], y=m12["expense"], name="支出",
-                        marker_color=EXPENSE_C, opacity=0.85)
-            fig.add_scatter(x=m12["month"], y=m12["net"], name="淨存",
-                            mode="lines+markers", line=dict(color=NET_C))
-            fig.update_layout(barmode="group", margin=dict(l=20, r=20, t=10, b=20),
-                              legend=dict(orientation="h", y=1.1), height=320,
-                              xaxis=dict(type="category"))  # 月資料別被當日期軸展開
-            st.plotly_chart(fig, width="stretch")
-        with col_r:
-            st.subheader(f"🧾 {month} 分類")
-            bd = analytics.category_breakdown(sub, month=month)
-            if bd.empty:
-                st.caption("這個月沒有支出記錄")
-            else:
-                pie = px.pie(bd, names="category", values="amount", hole=0.4)
-                pie.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=320)
-                st.plotly_chart(pie, width="stretch")
+    r1a, r1b = st.columns(2)
+    with r1a, st.container(border=True):
+        st.markdown(f'<div class="card-sub">{int(month[5:7])}月共同開銷</div>'
+                    f'<div class="big-num">{_fmt(joint_total)}</div>'
+                    f'<div class="card-sub">共 {joint_n} 筆　·　'
+                    + "　/　".join(f'{names[p["id"]]} {_fmt(s_month["paid"][p["id"]])}'
+                                   for p in people)
+                    + "</div>", unsafe_allow_html=True)
+    with r1b, st.container(border=True):
+        st.markdown(f'<div class="card-title" style="display:flex;justify-content:space-between">'
+                    f'<span>目前分帳狀況</span>'
+                    f'<span class="card-sub">{s_all["msg"]}</span></div>',
+                    unsafe_allow_html=True)
+        rows = ""
+        for p in sorted(people, key=lambda p: -s_all["balance"][p["id"]]):
+            bal = s_all["balance"][p["id"]]
+            cls = "settle-pos" if bal >= 0 else "settle-neg"
+            amt = f'{"+" if bal >= 0 else "−"}{_fmt(abs(bal))}'
+            rows += (f'<div class="settle-row {cls}">'
+                     f'<span class="settle-name"><span class="settle-dot">'
+                     f'{names[p["id"]][:1]}</span>{names[p["id"]]}</span>'
+                     f'<span>{amt}</span></div>')
+        st.markdown(rows, unsafe_allow_html=True)
 
-        st.subheader("🤝 誰欠誰（共同開銷對半，CAD 結算）")
-        s_month = analytics.settlement(cdf, meta["people"], month=month)
-        s_all = analytics.settlement(cdf, meta["people"])
-        if len(meta["people"]) >= 2:
-            st.markdown(duo_settlement_html(s_month, meta["people"], names,
-                                            person_colors(meta), month),
-                        unsafe_allow_html=True)
-            st.markdown(f'<div class="duo-foot">累計：{s_all["msg"]}　'
-                        + "　".join(f'{names[pid]} 已付 {_fmt(amt)}'
-                                    for pid, amt in s_all["paid"].items())
-                        + "</div>", unsafe_allow_html=True)
+    # ---- 預算卡 ---------------------------------------------------------
+    budgets = {k: float(v) for k, v in (meta.get("budgets") or {}).items()
+               if float(v or 0) > 0}
+    with st.container(border=True):
+        st.markdown(f'<div class="card-title">{int(month[5:7])}月預算</div>',
+                    unsafe_allow_html=True)
+        if not budgets:
+            st.caption("還沒設定預算——到「⚙️ 設定」幫各分類設每月預算，這裡就會出現進度。")
         else:
-            st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {MS}{s_month['total']:,.2f}）")
-        foreign = sorted(set(df["currency"]) - {"CAD"})
-        if foreign:
-            rates = fetch_rates()
-            st.caption("外幣已按匯率換算（每日更新）：" + "　".join(
-                f"{c}→CAD {rates.get(c, 1.0):.3f}" for c in foreign))
+            spent_all = (mdf[mdf["type"] == "expense"]
+                         .groupby("category")["amount"].sum())
+            total_b = sum(budgets.values())
+            used = float(sum(spent_all.get(c, 0.0) for c in budgets))
+            st.markdown(
+                f'<div class="bar-head"><span class="card-sub">總預算 '
+                f'<b style="color:#1C1C1E">{_fmt(total_b)}</b></span>'
+                f'<span class="card-sub">已用 <b style="color:#1C1C1E">{_fmt(used)}</b>'
+                f' · {used / total_b:.0%}</span></div><hr style="margin:0.4rem 0">',
+                unsafe_allow_html=True)
+            rows = ""
+            for c, b in budgets.items():
+                sp = float(spent_all.get(c, 0.0))
+                left = b - sp
+                color = BUDGET_C if sp <= b else "#E5484D"
+                right = (f'{_fmt(sp)} / {_fmt(b)} · '
+                         + (f'<small>剩 {_fmt(left)}</small>' if left >= 0
+                            else f'<small style="color:#E5484D">超 {_fmt(-left)}</small>'))
+                rows += bar_row(cat_label(c), right, sp / b * 100, color)
+            st.markdown(rows, unsafe_allow_html=True)
 
-        st.subheader("🕘 最近記錄")
-        recent = df.sort_values(["date", "created_ts"], ascending=False).head(20).copy()
-        recent["人"] = recent["person"].map(names).fillna(recent["person"])
-        recent["日期"] = recent["date"].dt.strftime("%m/%d")
-        recent["金額"] = recent.apply(
-            lambda r: f"{'+' if r['type'] == 'income' else '-'}{sym(r['currency'])}{r['amount']:,.2f}",
-            axis=1)
-        recent["共同"] = recent["split"].map({"half": "👫", "advance": "🤝", "own": ""})
-        st.dataframe(recent[["日期", "人", "category", "item", "金額", "共同", "note"]],
-                     width="stretch", hide_index=True,
-                     column_config={"category": "分類", "item": "品項", "note": "備註"})
+    # ---- 三張分析卡：地點 / 分類長條 / 分類圓餅 --------------------------
+    def scope_df(this_month: bool):
+        base = mdf if this_month else cdf
+        return base[base["type"] == "expense"]
 
-        with st.expander("刪除某一筆（記錯用）"):
-            labels = {r["id"]: f"{r['日期']} {r['人']} {r['item']} {r['金額']}"
-                      for _, r in recent.iterrows()}
-            target = st.selectbox("選一筆", list(labels), format_func=labels.get)
-            if st.button("🗑️ 確定刪除", type="secondary"):
-                try:
-                    client.delete_txn(target)
-                    st.session_state["flash"] = "刪掉了"
-                    refresh()
-                except ApiError as e:
-                    st.error(f"刪除失敗：{e}")
+    c1, c2, c3 = st.columns(3)
+    with c1, st.container(border=True):
+        st.markdown('<div class="card-title">花在哪些地點</div>', unsafe_allow_html=True)
+        sub = scope_df(toggle("tg_loc"))
+        loc = analytics.by_location(sub, n=6)
+        if loc.empty:
+            st.caption("記帳時填「地點」就會有這張圖")
+        else:
+            total = loc["amount"].sum()
+            st.markdown("".join(
+                bar_row(f'📍 {r.location}',
+                        f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small>',
+                        r.amount / loc["amount"].max() * 100)
+                for r in loc.itertuples()), unsafe_allow_html=True)
+    with c2, st.container(border=True):
+        st.markdown('<div class="card-title">花在哪些分類</div>', unsafe_allow_html=True)
+        sub = scope_df(toggle("tg_cat"))
+        bd = analytics.category_breakdown(sub, month=None)
+        if bd.empty:
+            st.caption("沒有支出記錄")
+        else:
+            total = bd["amount"].sum()
+            st.markdown("".join(
+                bar_row(cat_label(r.category),
+                        f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small>',
+                        r.amount / bd["amount"].max() * 100)
+                for r in bd.head(6).itertuples()), unsafe_allow_html=True)
+    with c3, st.container(border=True):
+        st.markdown('<div class="card-title">分類圓餅圖</div>', unsafe_allow_html=True)
+        sub = scope_df(toggle("tg_pie"))
+        bd = analytics.category_breakdown(sub, month=None)
+        if bd.empty:
+            st.caption("沒有支出記錄")
+        else:
+            total = bd["amount"].sum()
+            pie = px.pie(bd, names="category", values="amount", hole=0.62,
+                         color_discrete_sequence=PIE_COLORS)
+            pie.update_traces(textinfo="none", sort=False)
+            pie.update_layout(showlegend=False, height=190,
+                              margin=dict(l=10, r=10, t=6, b=6),
+                              annotations=[dict(text=f"CA${total:,.2f}<br>"
+                                                     f"<span style='font-size:11px;color:#9A9A98'>總支出</span>",
+                                                showarrow=False, font_size=15)])
+            st.plotly_chart(pie, width="stretch", config={"displayModeBar": False})
+            st.markdown("".join(
+                f'<div class="lg-row"><span><span class="lg-dot" '
+                f'style="background:{PIE_COLORS[i % len(PIE_COLORS)]}"></span>'
+                f'{cat_label(r.category)}</span>'
+                f'<span class="lg-pct">{r.amount / total:.0%}</span></div>'
+                for i, r in enumerate(bd.head(6).itertuples())),
+                unsafe_allow_html=True)
+
+    # ---- 每月總開銷 ------------------------------------------------------
+    with st.container(border=True):
+        st.markdown('<div class="card-title">每月總開銷</div>', unsafe_allow_html=True)
+        m12 = analytics.monthly_summary(cdf, last_n=12)
+        fig = go.Figure(go.Bar(
+            x=[f"{int(m[5:7])}月" for m in m12["month"]],
+            y=m12["expense"], marker_color=MONTH_BAR_C, width=0.35,
+            text=[f"CA${v:,.2f}" for v in m12["expense"]],
+            textposition="outside", cliponaxis=False))
+        fig.update_layout(height=240, margin=dict(l=20, r=20, t=24, b=10),
+                          xaxis=dict(type="category"),
+                          yaxis=dict(visible=False))
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+    # ---- 明細 ------------------------------------------------------------
+    with st.container(border=True):
+        h1, h2 = st.columns([4, 1.3])
+        h1.markdown('<div class="card-title">明細</div>', unsafe_allow_html=True)
+        with h2:
+            this_month = toggle("tg_detail")
+        f1, f2, _ = st.columns([1.4, 1.4, 3])
+        base = df[df["month"] == month] if this_month else df
+        cats = ["全部分類"] + sorted(base["category"].unique())
+        cat_f = f1.selectbox("分類", cats, label_visibility="collapsed")
+        payers = ["全部付款人"] + [p["id"] for p in people]
+        payer_f = f2.selectbox("付款人", payers, label_visibility="collapsed",
+                               format_func=lambda v: names.get(v, v))
+        rows = base.copy()
+        if cat_f != "全部分類":
+            rows = rows[rows["category"] == cat_f]
+        if payer_f != "全部付款人":
+            rows = rows[rows["person"] == payer_f]
+        rows = rows.sort_values(["date", "created_ts"], ascending=False).head(200)
+
+        if rows.empty:
+            st.caption("沒有符合條件的記錄")
+        else:
+            body = ""
+            for r in rows.itertuples():
+                loc = (f'<br><span class="loc-pill">📍 {r.location}</span>'
+                       if r.location else "")
+                sign = "+" if r.type == "income" else ""
+                amt_style = ' style="color:#34A853"' if r.type == "income" else ""
+                split_txt = ("收入" if r.type == "income"
+                             else SPLIT_LABEL.get(r.split, r.split))
+                body += (f'<tr><td class="mut">{r.date.strftime("%m/%d")}</td>'
+                         f'<td>{r.item}{loc}</td>'
+                         f'<td>{cat_label(r.category)}</td>'
+                         f'<td>{chip(r.person, names, colors)}</td>'
+                         f'<td class="amt"{amt_style}>{sign}'
+                         f'{sym(r.currency)}{r.amount:,.2f}</td>'
+                         f'<td class="mut">{split_txt}</td></tr>')
+            st.markdown('<table class="dt"><thead><tr>'
+                        '<th>日期</th><th>品項</th><th>分類</th><th>付款人</th>'
+                        '<th>金額</th><th>分攤</th></tr></thead>'
+                        f'<tbody>{body}</tbody></table>', unsafe_allow_html=True)
+
+        with st.expander("✏️ 編輯／刪除某一筆"):
+            if rows.empty:
+                st.caption("上面先篩出要改的記錄")
+            else:
+                labels = {r.id: f'{r.date.strftime("%m/%d")} {names.get(r.person, r.person)}'
+                                f' {r.item} {sym(r.currency)}{r.amount:,.2f}'
+                          for r in rows.itertuples()}
+                rid = st.selectbox("選一筆", list(labels), format_func=labels.get)
+                row = df[df["id"] == rid].iloc[0]
+                with st.form(f"edit_{rid}"):
+                    e1, e2 = st.columns(2)
+                    person = e1.radio("付款人", [p["id"] for p in people],
+                                      index=[p["id"] for p in people].index(row["person"])
+                                      if row["person"] in [p["id"] for p in people] else 0,
+                                      format_func=lambda i: names[i], horizontal=True)
+                    ttype = e2.radio("類型", ["expense", "income"],
+                                     index=0 if row["type"] == "expense" else 1,
+                                     format_func=lambda t: "支出" if t == "expense" else "收入",
+                                     horizontal=True)
+                    all_cats = (meta["categories"]["expense"]
+                                + meta["categories"]["income"])
+                    if row["category"] not in all_cats:
+                        all_cats = [row["category"]] + all_cats
+                    category = st.selectbox("分類", all_cats,
+                                            index=all_cats.index(row["category"]))
+                    item = st.text_input("品項", value=row["item"])
+                    amount = st.number_input("金額（CAD）", min_value=0.0,
+                                             value=float(row["amount"]),
+                                             step=1.0, format="%.2f")
+                    date = st.date_input("日期", value=row["date"].date())
+                    split = st.radio("分攤", ["half", "own", "advance"],
+                                     index=["half", "own", "advance"].index(row["split"]),
+                                     format_func=SPLIT_LABEL.get, horizontal=True)
+                    location = st.text_input("地點", value=row["location"])
+                    note = st.text_input("備註", value=row["note"])
+                    b1, b2 = st.columns(2)
+                    if b1.form_submit_button("💾 更新", type="primary",
+                                             width="stretch"):
+                        try:
+                            client.update_txn({
+                                "id": rid, "created_at": row["created_at"],
+                                "date": str(date), "person": person,
+                                "type": ttype, "category": category,
+                                "item": item.strip(), "amount": round(float(amount), 2),
+                                "note": note.strip(), "location": location.strip(),
+                                "split": split if ttype == "expense" else "own",
+                                "source": row["source"], "currency": row["currency"],
+                            })
+                            st.session_state["flash"] = "更新好了"
+                            refresh()
+                        except ApiError as e:
+                            st.error(f"更新失敗：{e}")
+                    if b2.form_submit_button("🗑️ 刪除", width="stretch"):
+                        try:
+                            client.delete_txn(rid)
+                            st.session_state["flash"] = "刪掉了"
+                            refresh()
+                        except ApiError as e:
+                            st.error(f"刪除失敗：{e}")

@@ -147,6 +147,11 @@ st.markdown(
       padding: 0 4px; min-height: 1.7rem; font-size: 0.95rem;
     }
 
+    /* 表格橫向捲動容器：窄螢幕表格自己滑，不撐爆卡片 */
+    .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch;
+                  max-width: 100%; }
+    .tbl-scroll table { min-width: 420px; }
+
     /* 損益表 */
     table.pl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
     table.pl td { padding: 7px 8px; }
@@ -168,6 +173,11 @@ st.markdown(
     @media (max-width: 640px) {
       .block-container { padding: 2.5rem 0.75rem 1rem 0.75rem !important; }
       .mn-title { font-size: 1.1rem; }
+      [class*="st-key-card_"] { padding: 0.75rem 0.7rem !important; }
+      table.pl, table.dt { font-size: 0.85rem; }
+      .st-key-dtl [data-testid="stBaseButton-tertiary"] {
+        min-height: 1.35rem; font-size: 0.85rem;
+      }
       div[data-testid="stHorizontalBlock"] {
         flex-wrap: wrap !important;
         gap: 0.3rem !important;

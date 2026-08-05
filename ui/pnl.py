@@ -83,7 +83,7 @@ if ctx:
             sr = "" if p["save_rate"] is None else f'　<span class="card-sub">儲蓄率 {p["save_rate"]:.0%}</span>'
             rows += (f'<tr class="tot"><td>淨存{sr}</td>'
                      f'<td class="num">{fmt(p["net"])}</td></tr>')
-            st.markdown(f'<table class="pl">{rows}</table>', unsafe_allow_html=True)
+            st.markdown(f'<div class="tbl-scroll"><table class="pl">{rows}</table></div>', unsafe_allow_html=True)
             st.caption("固定/變動的分類歸屬在「⚙️ 設定」調整。")
 
         # ---- 年度視圖 ----------------------------------------------------
@@ -112,7 +112,9 @@ if ctx:
                      f'<td class="amt">{fmt(ti)}</td><td class="amt">{fmt(tf)}</td>'
                      f'<td class="amt">{fmt(tv)}</td><td class="amt">{fmt(tn)}</td>'
                      f'<td class="mut">{tsr}</td></tr>')
-            st.markdown('<table class="dt"><thead><tr><th>月份</th><th>收入</th>'
+            st.markdown('<div class="tbl-scroll"><table class="dt"><thead><tr>'
+                        '<th>月份</th><th>收入</th>'
                         '<th>固定支出</th><th>變動支出</th><th>淨存</th>'
                         '<th>儲蓄率</th></tr></thead>'
-                        f'<tbody>{body}</tbody></table>', unsafe_allow_html=True)
+                        f'<tbody>{body}</tbody></table></div>',
+                        unsafe_allow_html=True)

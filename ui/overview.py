@@ -25,8 +25,9 @@ def month_nav(months: list[str]) -> str:
     if "ov_month" not in st.session_state or st.session_state["ov_month"] not in months:
         st.session_state["ov_month"] = months[0]
     idx = months.index(st.session_state["ov_month"])  # months 是新→舊
-    c1, c2, c3, c4, _ = st.columns([0.6, 2.2, 0.6, 1.0, 6],
-                                   vertical_alignment="center")
+    nav = st.container(key="mnav")
+    with nav:
+        c1, c2, c3, c4 = st.columns([1, 3, 1, 2], vertical_alignment="center")
     if c1.button("‹", disabled=idx >= len(months) - 1):
         st.session_state["ov_month"] = months[idx + 1]
         st.rerun()

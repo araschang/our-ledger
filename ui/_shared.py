@@ -57,7 +57,7 @@ def chip(pid: str, names: dict, colors: dict) -> str:
     color = colors.get(pid, "#888")
     return (f'<span class="chip" style="background:{color}1A;color:{color}">'
             f'<span class="chip-dot" style="background:{color}">'
-            f'{name[:1]}</span>{name}</span>')
+            f'{name[:1]}</span><span class="chip-name">{name}</span></span>')
 
 
 def bar_row(label_html: str, right_html: str, pct: float,

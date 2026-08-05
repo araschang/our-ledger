@@ -80,8 +80,15 @@ st.markdown(
     .bar-track{ height: 8px; background: #EDEDEB; border-radius: 99px; }
     .bar-fill { height: 8px; border-radius: 99px; }
 
-    /* 月份導航標題（別被窄欄擠成直排字） */
+    /* 月份導航：內容多寬就多寬、單行、置中對齊（桌機手機同一套） */
     .mn-title { font-size: 1.4rem; font-weight: 800; white-space: nowrap; }
+    .st-key-mnav [data-testid="stHorizontalBlock"] {
+      flex-wrap: nowrap !important; gap: 0.5rem !important;
+      align-items: center;
+    }
+    .st-key-mnav [data-testid="stColumn"] {
+      min-width: 0 !important; width: auto !important; flex: 0 0 auto !important;
+    }
 
     /* 分帳狀況 綠/紅列 */
     .settle-row { display: flex; justify-content: space-between; align-items: center;
@@ -179,6 +186,33 @@ st.markdown(
         min-width: 3.8rem !important;
         flex: 1 1 3.8rem !important;
       }
+      /* 明細列手機版：藏「分類、分攤」欄、強制單行、緊湊 */
+      .st-key-dtl [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important; gap: 0.2rem !important;
+      }
+      .st-key-dtl [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important; flex: 1 1 auto !important;
+      }
+      .st-key-dtl [data-testid="stHorizontalBlock"]
+        > [data-testid="stColumn"]:nth-child(3),
+      .st-key-dtl [data-testid="stHorizontalBlock"]
+        > [data-testid="stColumn"]:nth-child(6) {
+        display: none !important;
+      }
+      /* 巢狀的 ✏️/🗑 欄不吃 3.8rem 底限，手機直疊省寬度 */
+      .st-key-dtl [data-testid="stColumn"] [data-testid="stColumn"] {
+        min-width: 100% !important; flex: 0 0 auto !important;
+      }
+      .st-key-dtl [data-testid="stColumn"] [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important; gap: 0 !important;
+      }
+      .st-key-dtl [data-testid="stHorizontalBlock"]
+        > [data-testid="stColumn"]:nth-child(7) {
+        flex: 0 0 2.2rem !important;
+      }
+      .st-key-dtl .chip { padding: 2px; }
+      .st-key-dtl .chip-name { display: none; }  /* 手機只留圓點 */
+      .st-key-dtl [data-testid="stBaseButton-tertiary"] { padding: 0 2px; }
     }
     </style>
     """,

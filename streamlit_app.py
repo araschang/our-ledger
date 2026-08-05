@@ -12,14 +12,13 @@ SYMBOL = "CA$"
 MD_SYMBOL = "CA\\$"  # markdown 語境用（st.success/caption 會把成對 $ 當 LaTeX）
 DEFAULT_META = {
     "people": [
-        {"id": "aya", "name": "李綾芸"},
-        {"id": "aras", "name": "張景皓"},
+        {"id": "aya", "name": "Diana"},
+        {"id": "aras", "name": "Aras"},
     ],
     "categories": {
-        "expense": ["🍜 外食・餐廳", "🥬 買菜・食材", "🏠 房租・居住", "💡 水電網路",
-                    "🧻 日用品・雜貨", "🛋️ 家具・家電", "🚗 交通", "🎬 娛樂・約會",
-                    "🏥 醫療・健康", "🐾 寵物", "📦 其他"],
-        "income": ["💼 薪資", "🎁 獎金", "📈 投資", "📦 其他"],
+        "expense": ["外食", "買菜", "居住", "水電網路", "日用品", "家具家電",
+                    "交通", "娛樂", "醫療", "寵物", "其他"],
+        "income": ["薪資", "獎金", "投資", "其他"],
     },
 }
 
@@ -92,7 +91,8 @@ def render_add_form(client: GasClient, meta: dict):
     with st.form("add", clear_on_submit=True):
         category = st.selectbox("分類", cats["expense" if ttype == "expense" else "income"])
         item = st.text_input("品項", placeholder="例：Costco 採買")
-        amount = st.number_input(f"金額（{SYMBOL}）", min_value=0.0, step=1.0, format="%.2f")
+        amount = st.number_input(f"金額（{SYMBOL}）", min_value=0.0, step=1.0,
+                                 format="%.2f", value=None, placeholder="多少錢")
         date = st.date_input("日期", value="today")
         shared = True
         if ttype == "expense":
@@ -101,7 +101,7 @@ def render_add_form(client: GasClient, meta: dict):
             location = st.text_input("地點")
             note = st.text_input("備註")
         if st.form_submit_button("✍️ 記下來", width="stretch", type="primary"):
-            if amount <= 0:
+            if not amount or amount <= 0:
                 st.error("金額要大於 0")
             elif not item.strip():
                 st.error("品項不能空白")
@@ -233,7 +233,7 @@ def render_settings(client: GasClient, meta: dict):
         for p in meta["people"]:
             new_people.append({"id": p["id"],
                                "name": st.text_input(p["id"], value=p["name"])})
-        st.markdown("**支出分類**（一行一個，可加 emoji）")
+        st.markdown("**支出分類**（一行一個）")
         exp = st.text_area("expense", value="\n".join(meta["categories"]["expense"]),
                            height=220, label_visibility="collapsed")
         st.markdown("**收入分類**")

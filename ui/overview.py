@@ -304,7 +304,8 @@ if ctx:
                     sign = "+" if r.type == "income" else ""
                     color = "#34A853" if r.type == "income" else "#1C1C1E"
                     c[4].markdown(f'<span class="dtl-amt" style="color:{color}">'
-                                  f'{sign}{sym(r.currency)}{r.amount:,.2f}</span>',
+                                  f'{sign}<span class="cur">{sym(r.currency)}</span>'
+                                  f'{r.amount:,.2f}</span>',
                                   unsafe_allow_html=True)
                     split_txt = ("收入" if r.type == "income"
                                  else SPLIT_LABEL.get(r.split, r.split))

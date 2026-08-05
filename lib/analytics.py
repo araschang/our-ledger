@@ -53,20 +53,24 @@ def category_breakdown(df: pd.DataFrame, month: str | None = None,
 
 
 def settlement(df: pd.DataFrame, people: list[dict],
-               month: str | None = None) -> dict:
-    """共同開銷結算：shared=TRUE 的支出兩人對半。
+               month: str | None = None,
+               rates: dict | None = None) -> dict:
+    """共同開銷結算：shared=TRUE 的支出兩人對半，一律換算成 CAD。
 
-    回傳 {'total': 共同開銷總額, 'paid': {person_id: 已付},
+    rates: 各幣別→CAD 的匯率（例 {"USD": 1.35}）；缺的幣別當 1.0。
+    回傳 {'total': 共同開銷總額(CAD), 'paid': {person_id: 已付},
           'balance': {person_id: 已付-應付}, 'msg': 誰欠誰一句話}
     balance > 0 = 多付了該拿回；< 0 = 該補給對方。
     """
     sub = df[(df["type"] == "expense") & df["shared"]]
     if month:
         sub = sub[sub["month"] == month]
+    rates = rates or {}
+    cad = sub["amount"] * sub["currency"].map(lambda c: float(rates.get(c, 1.0)))
     ids = [p["id"] for p in people]
     names = {p["id"]: p["name"] for p in people}
-    paid = {pid: float(sub[sub["person"] == pid]["amount"].sum()) for pid in ids}
-    total = float(sub["amount"].sum())
+    paid = {pid: float(cad[sub["person"] == pid].sum()) for pid in ids}
+    total = float(cad.sum())
     share = total / len(ids) if ids else 0.0
     balance = {pid: paid[pid] - share for pid in ids}
 

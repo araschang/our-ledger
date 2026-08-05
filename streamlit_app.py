@@ -6,6 +6,8 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+import requests
+
 from lib import analytics
 from lib.api import ApiError, GasClient
 
@@ -84,6 +86,21 @@ def get_client() -> GasClient | None:
 @st.cache_data(ttl=60, show_spinner="讀取帳本中…")
 def fetch_all(url: str, token: str) -> dict:
     return GasClient(url, token).get_all()
+
+
+FALLBACK_RATES = {"CAD": 1.0, "USD": 1.35, "TWD": 0.044}
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_rates() -> dict:
+    """各幣別→CAD 匯率，每天抓一次；抓不到用保底值。"""
+    try:
+        r = requests.get("https://open.er-api.com/v6/latest/CAD", timeout=10).json()
+        cad_to = r["rates"]  # CAD→各幣別
+        return {c: (1.0 if c == "CAD" else 1.0 / float(cad_to[c]))
+                for c in CURRENCIES if c in cad_to}
+    except Exception:
+        return dict(FALLBACK_RATES)
 
 
 def refresh():
@@ -216,13 +233,19 @@ def render_dashboard(client: GasClient, df: pd.DataFrame, meta: dict):
     else:
         donut_chart(bd)
 
-    st.subheader(f"🤝 誰欠誰（{currency} 共同開銷對半）")
-    s_month = analytics.settlement(cdf, people, month=month)
-    s_all = analytics.settlement(cdf, people)
-    st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {MS}{s_month['total']:,.2f}）")
+    st.subheader("🤝 誰欠誰（共同開銷對半，CAD 結算）")
+    rates = fetch_rates()
+    s_month = analytics.settlement(df, people, month=month, rates=rates)
+    s_all = analytics.settlement(df, people, rates=rates)
+    cms = md_sym("CAD")
+    st.success(f"**{month}**：{s_month['msg']}　（共同開銷 {cms}{s_month['total']:,.2f}）")
     st.caption(f"累計：{s_all['msg']}　"
-               + "　".join(f"{names[pid]} 已付 {MS}{amt:,.2f}"
+               + "　".join(f"{names[pid]} 已付 {cms}{amt:,.2f}"
                            for pid, amt in s_all["paid"].items()))
+    foreign = sorted(set(df[(df["type"] == "expense") & df["shared"]]["currency"]) - {"CAD"})
+    if foreign:
+        st.caption("匯率（每日更新）：" + "　".join(
+            f"{c}→CAD {rates.get(c, 1.0):.3f}" for c in foreign))
 
     st.subheader("🕘 最近記錄")
     recent = df.sort_values(["date", "created_at"], ascending=False).head(20).copy()

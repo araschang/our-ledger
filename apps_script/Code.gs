@@ -86,8 +86,9 @@ function rowToTxn_(row, idx) {
 }
 
 function toBool_(v) {
-  // Shortcut 可能送字串 "true"/"false"，不能用 truthy 判斷
-  return v === true || String(v).toLowerCase() === 'true';
+  // Shortcut 可能送字串；也接受捷徑清單直接送的中文選項
+  const s = String(v).trim().toLowerCase();
+  return v === true || s === 'true' || s === '共同' || s === '是';
 }
 
 function txnToRow_(t) {

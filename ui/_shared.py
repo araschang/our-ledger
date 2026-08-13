@@ -41,6 +41,19 @@ def fixed_cats(meta: dict) -> list[str]:
     return [c for c in DEFAULT_FIXED if c in meta["categories"]["expense"]]
 
 
+def cat_options(meta: dict, df: pd.DataFrame, ttype: str) -> list[str]:
+    """分類選單＝設定裡的清單 ＋ 帳本裡用過但設定漏掉的。
+
+    兩邊會不一致（例：直接在 Sheet 改了分類、設定忘了同步），選單缺項很難發現，
+    所以用過的一律補在後面。要調順序/刪分類還是去「⚙️ 設定」。
+    """
+    base = list(meta["categories"]["expense" if ttype == "expense" else "income"])
+    if df is None or df.empty:
+        return base
+    used = df.loc[df["type"] == ttype, "category"]
+    return base + [c for c in dict.fromkeys(used) if c and c not in base]
+
+
 def cat_label(c: str) -> str:
     emoji = CAT_EMOJI.get(c, "🏷️")
     return f"{emoji} {c}"

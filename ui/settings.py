@@ -23,10 +23,12 @@ if ctx:
         inc = st.text_area("income", value="\n".join(meta["categories"]["income"]),
                            height=120, label_visibility="collapsed")
         st.markdown("**固定支出分類**（損益表用：房租、水電這種每月躲不掉的）")
+        # 選項要含「已設定但不在支出清單裡」的（例：分類清單改到一半），
+        # 否則存檔時會被悄悄清掉
+        saved_fixed = fixed_cats(meta)
+        fixed_opts = list(dict.fromkeys(meta["categories"]["expense"] + saved_fixed))
         new_fixed = st.multiselect(
-            "fixed", meta["categories"]["expense"],
-            default=[c for c in fixed_cats(meta)
-                     if c in meta["categories"]["expense"]],
+            "fixed", fixed_opts, default=saved_fixed,
             format_func=cat_label, label_visibility="collapsed")
         st.markdown("**每月預算**（0 = 不設；設了的分類會出現在總覽的預算卡）")
         budgets = meta.get("budgets") or {}

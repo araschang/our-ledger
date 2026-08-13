@@ -8,8 +8,9 @@ import streamlit as st
 from lib import analytics
 from lib.api import ApiError
 from ui._shared import (BUDGET_C, MONTH_BAR_C, TZ, bar_row, bar_track,
-                        cat_detail, cat_label, chip, empty_hint, load,
-                        person_colors, refresh, sym, CAT_EMOJI, SPLIT_LABEL)
+                        cat_detail, cat_label, cat_options, chip, empty_hint,
+                        load, person_colors, refresh, sym, CAT_EMOJI,
+                        SPLIT_LABEL)
 
 PIE_COLORS = ["#3B6FE0", "#E8823E", "#34A853", "#E5484D", "#8E67D6",
               "#E5A63B", "#5B8DBE", "#C98CA7", "#7FA6A0", "#A98467"]
@@ -242,8 +243,8 @@ if ctx:
                              index=0 if row["type"] == "expense" else 1,
                              format_func=lambda t: "支出" if t == "expense" else "收入",
                              horizontal=True)
-            all_cats = (meta["categories"]["expense"]
-                        + meta["categories"]["income"])
+            all_cats = (cat_options(meta, df, "expense")
+                        + cat_options(meta, df, "income"))
             if row["category"] not in all_cats:
                 all_cats = [row["category"]] + all_cats
             category = st.selectbox("分類", all_cats,

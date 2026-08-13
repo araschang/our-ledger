@@ -1,8 +1,8 @@
 """✍️ 記一筆"""
 import streamlit as st
 
-from ui._shared import (CURRENCIES, FALLBACK_RATES, cat_label, fetch_rates,
-                        load, refresh, sym, today)
+from ui._shared import (CURRENCIES, FALLBACK_RATES, cat_label, cat_options,
+                        fetch_rates, load, refresh, sym, today)
 from lib.api import ApiError
 
 st.title("✍️ 記一筆")
@@ -10,8 +10,7 @@ st.title("✍️ 記一筆")
 ctx = load()
 if ctx:
     client, meta = ctx["client"], ctx["meta"]
-    names = ctx["names"]
-    cats = meta["categories"]
+    names, df = ctx["names"], ctx["df"]
 
     c1, c2 = st.columns(2)
     person = c1.radio("誰記的（付錢的人）", [p["id"] for p in meta["people"]],
@@ -21,7 +20,7 @@ if ctx:
                      horizontal=True)
 
     with st.form("add", clear_on_submit=True):
-        category = st.selectbox("分類", cats["expense" if ttype == "expense" else "income"],
+        category = st.selectbox("分類", cat_options(meta, df, ttype),
                                 format_func=cat_label)
         item = st.text_input("品項", placeholder="例：Costco 採買")
         a1, a2 = st.columns([3, 1])

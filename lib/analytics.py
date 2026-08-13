@@ -132,17 +132,6 @@ def top_expenses(df: pd.DataFrame, n: int = 10,
     return sub.sort_values("amount", ascending=False).head(n)
 
 
-def by_location(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
-    """地點支出 Top N（略過沒填地點的）。columns: location, amount, count"""
-    sub = df[(df["type"] == "expense") & (df["location"].str.strip() != "")]
-    if sub.empty:
-        return pd.DataFrame(columns=["location", "amount", "count"])
-    out = (sub.groupby("location")
-           .agg(amount=("amount", "sum"), count=("id", "count"))
-           .sort_values("amount", ascending=False).head(n).reset_index())
-    return out
-
-
 def pnl(df: pd.DataFrame, fixed_cats: list[str],
         month: str | None = None) -> dict:
     """個人損益表：收入 → 固定支出 → 可支配餘裕 → 變動支出 → 淨存。

@@ -133,24 +133,12 @@ if ctx:
                 rows += bar_row(cat_label(c), right, sp / b * 100, color)
             st.markdown(rows, unsafe_allow_html=True)
 
-    # ---- 三張分析卡：地點 / 分類長條 / 分類圓餅 --------------------------
+    # ---- 兩張分析卡：分類長條 / 分類圓餅 --------------------------------
     def scope_df(this_month: bool):
         base = mdf if this_month else cdf
         return base[base["type"] == "expense"]
 
-    c1, c2, c3 = st.columns(3)
-    with c1, st.container(border=True, key="card_loc"):
-        sub = scope_df(card_head("花在哪些地點", "tg_loc"))
-        loc = analytics.by_location(sub, n=6)
-        if loc.empty:
-            st.caption("記帳時填「地點」就會有這張圖")
-        else:
-            total = loc["amount"].sum()
-            st.markdown("".join(
-                bar_row(f'📍 {r.location}',
-                        f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small>',
-                        r.amount / loc["amount"].max() * 100)
-                for r in loc.itertuples()), unsafe_allow_html=True)
+    c2, c3 = st.columns(2)
     with c2, st.container(border=True, key="card_cat"):
         sub = scope_df(card_head("花在哪些分類", "tg_cat"))
         bd = analytics.category_breakdown(sub, month=None)
@@ -245,7 +233,6 @@ if ctx:
             split = st.radio("分攤", ["half", "own", "advance"],
                              index=["half", "own", "advance"].index(row["split"]),
                              format_func=SPLIT_LABEL.get, horizontal=True)
-            location = st.text_input("地點", value=row["location"])
             note = st.text_input("備註", value=row["note"])
             if st.button("💾 更新", type="primary", width="stretch"):
                 try:
@@ -254,7 +241,7 @@ if ctx:
                         "date": str(date), "person": person,
                         "type": ttype, "category": category,
                         "item": item.strip(), "amount": round(float(amount), 2),
-                        "note": note.strip(), "location": location.strip(),
+                        "note": note.strip(), "location": row["location"],
                         "split": split if ttype == "expense" else "own",
                         "source": row["source"], "currency": row["currency"],
                     })
@@ -295,9 +282,7 @@ if ctx:
                     c = st.columns(COLS, vertical_alignment="center")
                     c[0].markdown(f'<span class="dtl-mut">{r.date.strftime("%m/%d")}</span>',
                                   unsafe_allow_html=True)
-                    loc = (f'<br><span class="loc-pill">📍 {r.location}</span>'
-                           if r.location else "")
-                    c[1].markdown(f'{r.item}{loc}', unsafe_allow_html=True)
+                    c[1].markdown(f'{r.item}')
                     c[2].markdown(cat_label(r.category))
                     c[3].markdown(chip(r.person, names, colors),
                                   unsafe_allow_html=True)

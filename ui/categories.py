@@ -1,4 +1,4 @@
-"""🧾 分類分析 — 逐月分類、分類×人、地點、大額支出"""
+"""🧾 分類分析 — 逐月分類、分類×人、大額支出"""
 import plotly.express as px
 import streamlit as st
 
@@ -28,8 +28,7 @@ if ctx:
                                   xaxis=dict(type="category"))
                 st.plotly_chart(fig, width="stretch")
 
-        col_l, col_r = st.columns(2)
-        with col_l, st.container(border=True, key="card_pc"):
+        with st.container(border=True, key="card_pc"):
             st.markdown('<div class="card-title">👫 分類 × 人</div>',
                         unsafe_allow_html=True)
             pc = analytics.person_category(cdf)
@@ -46,20 +45,6 @@ if ctx:
                                   xaxis_title=f"支出（{S}）", yaxis_title="",
                                   yaxis=dict(autorange="reversed"),
                                   legend_title_text="")
-                st.plotly_chart(fig, width="stretch")
-        with col_r, st.container(border=True, key="card_loc2"):
-            st.markdown('<div class="card-title">📍 地點 Top 10</div>',
-                        unsafe_allow_html=True)
-            loc = analytics.by_location(sub)
-            if loc.empty:
-                st.caption("記帳時填「地點」就會有這張圖")
-            else:
-                fig = px.bar(loc, x="amount", y="location", orientation="h",
-                             text="count")
-                fig.update_traces(texttemplate="%{text} 筆", textposition="auto")
-                fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=400,
-                                  xaxis_title=f"支出（{S}）", yaxis_title="",
-                                  yaxis=dict(autorange="reversed"))
                 st.plotly_chart(fig, width="stretch")
 
         with st.container(border=True, key="card_top"):

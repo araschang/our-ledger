@@ -41,8 +41,7 @@ if ctx:
                     "own": f"🙋 {names[person]} 自己的",
                     "advance": f"🤝 幫 {other_name} 付的（代墊，{other_name} 欠全額）",
                 }[v], horizontal=True)
-        with st.expander("地點／備註（選填）"):
-            location = st.text_input("地點")
+        with st.expander("備註（選填）"):
             note = st.text_input("備註")
         if st.form_submit_button("✍️ 記下來", width="stretch", type="primary"):
             if not amount or amount <= 0:
@@ -66,7 +65,6 @@ if ctx:
                         "date": str(date), "person": person, "type": ttype,
                         "category": category, "item": item.strip(),
                         "amount": save_amount, "note": save_note,
-                        "location": location.strip(),
                         "shared": split == "half",
                         "split": split if ttype == "expense" else "own",
                         "source": "web", "currency": "CAD",

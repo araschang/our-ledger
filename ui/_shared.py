@@ -22,14 +22,15 @@ DUO_COLORS = ["#3B6FE0", "#E8823E"]  # 藍(Diana) × 橘(Aras)，依 meta.people
 # 分類顯示用 emoji（資料庫存純文字，畫面加圖示）
 CAT_EMOJI = {
     "外食": "🍜", "買菜": "🥬", "居住": "🏠", "水電網路": "💡", "日用品": "🧻",
-    "家具家電": "🛋️", "交通": "🚗", "娛樂": "🎬", "醫療": "🏥", "寵物": "🐾",
+    "家具家電": "🛋️", "交通": "🚗", "車貸保險": "🚙", "娛樂": "🎬",
+    "美容": "💅", "衣服": "👗", "醫療": "🏥", "寵物": "🐾",
     "訂閱": "📺", "運動": "🏸", "其他": "📦",
     "薪資": "💼", "獎金": "🎁", "投資": "📈",
 }
 SPLIT_LABEL = {"half": "平分", "own": "自己", "advance": "代墊"}
 
 
-DEFAULT_FIXED = ["居住", "水電網路", "訂閱"]  # 固定支出分類預設
+DEFAULT_FIXED = ["居住", "水電網路", "訂閱", "車貸保險"]  # 固定支出分類預設
 
 
 def fixed_cats(meta: dict) -> list[str]:
@@ -62,7 +63,7 @@ def chip(pid: str, names: dict, colors: dict) -> str:
 
 def bar_row(label_html: str, right_html: str, pct: float,
             color: str = BAR_C) -> str:
-    """一行「標籤＋金額＋進度條」（花在哪些地點/分類、預算共用）。"""
+    """一行「標籤＋金額＋進度條」（花在哪些分類、預算共用）。"""
     pct = max(0.0, min(100.0, pct))
     return (f'<div class="bar-row"><div class="bar-head">'
             f'<span>{label_html}</span><span class="bar-right">{right_html}</span></div>'
@@ -79,7 +80,8 @@ DEFAULT_META = {
     ],
     "categories": {
         "expense": ["外食", "買菜", "居住", "水電網路", "日用品", "家具家電",
-                    "交通", "娛樂", "醫療", "寵物", "訂閱", "其他"],
+                    "交通", "車貸保險", "娛樂", "運動", "美容", "衣服",
+                    "醫療", "寵物", "訂閱", "其他"],
         "income": ["薪資", "獎金", "投資", "其他"],
     },
 }

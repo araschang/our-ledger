@@ -77,12 +77,7 @@ st.markdown(
                 font-size: 0.7rem; font-weight: 700; display: inline-flex;
                 align-items: center; justify-content: center; }
 
-    /* 地點小標籤 */
-    .loc-pill { display: inline-block; background: #FBE9EC; color: #D6455D;
-                border-radius: 999px; padding: 1px 9px; font-size: 0.75rem;
-                margin-top: 2px; }
-
-    /* 進度條列（地點/分類/預算） */
+    /* 進度條列（分類/預算） */
     .bar-row  { margin: 0.55rem 0; }
     .bar-head { display: flex; justify-content: space-between;
                 font-size: 0.9rem; margin-bottom: 5px; }

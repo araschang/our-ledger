@@ -294,12 +294,14 @@ if ctx:
         if rows.empty:
             st.caption("沒有符合條件的記錄")
         else:
-            COLS = [0.9, 2.6, 1.4, 1.5, 1.3, 0.7, 0.8]
+            COLS = [0.9, 2.6, 1.4, 1.5, 1.4, 0.8, 0.8]
+            # 對齊（金額靠右、分攤置中）統一在 CSS 用欄位序號設定，表頭資料列同一套；
+            # 這裡不包 <div>，包了那格會多一個區塊盒、跟同列其他格對不到高度
             with st.container(key="dtl"):
-                h = st.columns(COLS)
+                h = st.columns(COLS, vertical_alignment="center")
                 for i, label in enumerate(["日期", "品項", "分類", "付款人",
                                            "金額", "分攤", ""]):
-                    h[i].markdown(f'<div class="dtl-th">{label}</div>',
+                    h[i].markdown(f'<span class="dtl-th">{label}</span>',
                                   unsafe_allow_html=True)
                 shown = rows.head(50)
                 for r in shown.itertuples():

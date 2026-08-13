@@ -153,14 +153,16 @@ st.markdown(
     .st-key-dtl { gap: 0 !important; }
     .st-key-dtl > * {
       border-bottom: 1px solid #EDEDEA;
-      padding: 0.32rem 0.35rem; border-radius: 6px;
+      padding: 0.45rem 0.4rem; border-radius: 6px;
     }
     .st-key-dtl > *:nth-child(even) { background: #FAFAF8; }  /* 隔行淺灰 */
     .st-key-dtl > *:hover { background: #EEF3FD; }  /* 滑到哪列哪列亮 */
     .st-key-dtl > *:first-child {                   /* 表頭：不吃斑馬紋 */
       border-bottom: 1.5px solid #DFDFDC; background: none !important;
-      padding-bottom: 0.45rem;
+      padding-bottom: 0.5rem; margin-bottom: 0.15rem;
+      border-radius: 0;
     }
+    .dtl-th { line-height: 1.3; }
     /* 欄與欄之間的直線：只畫整列的直接子欄（✏️/🗑 那組巢狀的不畫）。
        手機太窄就不畫，見下方 media query。 */
     .st-key-dtl > * > [data-testid="stHorizontalBlock"]
@@ -171,6 +173,17 @@ st.markdown(
     }
     .st-key-dtl [data-testid="stHorizontalBlock"]
       > [data-testid="stColumn"] { padding-left: 0.4rem; }
+    /* 欄位對齊：第 5 欄金額靠右（小數點才對得齊）、第 6 欄分攤置中。
+       表頭跟資料列同一套規則，所以標題永遠對在資料正上方。 */
+    /* 要連 markdown 容器一起指定（Streamlit 內層自己有 text-align，繼承壓不過） */
+    .st-key-dtl [data-testid="stHorizontalBlock"]
+      > [data-testid="stColumn"]:nth-child(5),
+    .st-key-dtl [data-testid="stHorizontalBlock"]
+      > [data-testid="stColumn"]:nth-child(5) * { text-align: right !important; }
+    .st-key-dtl [data-testid="stHorizontalBlock"]
+      > [data-testid="stColumn"]:nth-child(6),
+    .st-key-dtl [data-testid="stHorizontalBlock"]
+      > [data-testid="stColumn"]:nth-child(6) * { text-align: center !important; }
 
     /* 可點的分類名稱（總覽分類卡）：長得像文字，點了看明細 */
     [class*="st-key-catlnk_"] button {

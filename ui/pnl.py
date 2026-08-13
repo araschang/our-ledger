@@ -2,15 +2,19 @@
 import streamlit as st
 
 from lib import analytics
-from ui._shared import cat_label, empty_hint, fixed_cats, load, person_view
+from ui._shared import (cat_detail, cat_label, empty_hint, fixed_cats, load,
+                        person_colors, person_view)
 
 st.title("📑 損益表")
 
 ctx = load()
 if ctx:
-    cdf, meta = ctx["cdf"], ctx["meta"]
+    cdf, meta, names = ctx["cdf"], ctx["meta"], ctx["names"]
+    colors = person_colors(meta)
     fixed = fixed_cats(meta)
     sub = person_view(cdf, meta, key="pnl_view")
+    view = st.session_state.get("pnl_view")
+    view = None if view in (None, "all") else view
     if not empty_hint(sub):
         months = sorted(sub["month"].unique(), reverse=True)
         month = st.selectbox("月份", months, index=0)
@@ -58,33 +62,43 @@ if ctx:
                         unsafe_allow_html=True)
 
             def sec(label, amount, dl="", sign=""):
-                return (f'<tr class="sec"><td>{label}</td>'
-                        f'<td class="num">{sign}{fmt(abs(amount))} {dl}</td></tr>')
+                """小計列（收入/固定支出/變動支出）。"""
+                st.markdown(f'<div class="pl-sec"><span>{label}</span>'
+                            f'<span class="pl-amt">{sign}{fmt(abs(amount))} '
+                            f'{dl}</span></div>', unsafe_allow_html=True)
 
-            def subs(by):
-                return "".join(
-                    f'<tr class="sub"><td>{cat_label(c)}</td>'
-                    f'<td class="num">{fmt(v)}</td></tr>'
-                    for c, v in by.items())
+            def tot(label, amount):
+                st.markdown(f'<div class="pl-tot"><span>{label}</span>'
+                            f'<span class="pl-amt">{fmt(amount)}</span></div>',
+                            unsafe_allow_html=True)
 
-            rows = sec("收入", p["income"],
-                       delta(p["income"], prev["income"] if prev else None))
-            rows += subs(p["income_by"])
-            rows += sec("固定支出", p["fixed"],
-                        delta(p["fixed"], prev["fixed"] if prev else None,
-                              invert=True), sign="−")
-            rows += subs(p["fixed_by"])
-            rows += (f'<tr class="tot"><td>可支配餘裕</td>'
-                     f'<td class="num">{fmt(p["disposable"])}</td></tr>')
-            rows += sec("變動支出", p["variable"],
-                        delta(p["variable"], prev["variable"] if prev else None,
-                              invert=True), sign="−")
-            rows += subs(p["variable_by"])
-            sr = "" if p["save_rate"] is None else f'　<span class="card-sub">儲蓄率 {p["save_rate"]:.0%}</span>'
-            rows += (f'<tr class="tot"><td>淨存{sr}</td>'
-                     f'<td class="num">{fmt(p["net"])}</td></tr>')
-            st.markdown(f'<div class="tbl-scroll"><table class="pl">{rows}</table></div>', unsafe_allow_html=True)
-            st.caption("固定/變動的分類歸屬在「⚙️ 設定」調整。")
+            def subs(by, tag):
+                """分類細項：名字做成按鈕，點了看那一類這個月的每一筆。"""
+                for c, v in by.items():
+                    s1, s2 = st.columns([3, 2], vertical_alignment="center")
+                    if s1.button(cat_label(c), key=f"plcat_{tag}_{c}",
+                                 type="tertiary", help="點看明細"):
+                        cat_detail(sub, c, names, colors, month=month,
+                                   person=view)
+                    s2.markdown(f'<div class="pl-num">{fmt(v)}</div>',
+                                unsafe_allow_html=True)
+
+            sec("收入", p["income"],
+                delta(p["income"], prev["income"] if prev else None))
+            subs(p["income_by"], "inc")
+            sec("固定支出", p["fixed"],
+                delta(p["fixed"], prev["fixed"] if prev else None, invert=True),
+                sign="−")
+            subs(p["fixed_by"], "fix")
+            tot("可支配餘裕", p["disposable"])
+            sec("變動支出", p["variable"],
+                delta(p["variable"], prev["variable"] if prev else None,
+                      invert=True), sign="−")
+            subs(p["variable_by"], "var")
+            sr = ("" if p["save_rate"] is None
+                  else f'　<span class="card-sub">儲蓄率 {p["save_rate"]:.0%}</span>')
+            tot(f"淨存{sr}", p["net"])
+            st.caption("點分類名稱看那一類的明細；固定/變動的歸屬在「⚙️ 設定」調整。")
 
         # ---- 年度視圖 ----------------------------------------------------
         with st.container(border=True, key="card_year"):

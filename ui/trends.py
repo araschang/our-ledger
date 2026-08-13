@@ -29,7 +29,9 @@ if ctx:
                         unsafe_allow_html=True)
             fig = go.Figure()
             fig.add_scatter(x=cn["month"], y=cn["cum_net"], mode="lines+markers",
-                            fill="tozeroy", line=dict(color=NET_C), name="累積淨存")
+                            fill="tozeroy", line=dict(color=NET_C), name="累積淨存",
+                            hovertemplate=("月份：%{x}<br>累積淨存："
+                                           "CA$%{y:,.2f}<extra></extra>"))
             fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
                               yaxis_title=f"{S}",
                               xaxis=dict(type="category"))
@@ -46,7 +48,9 @@ if ctx:
                 fig = go.Figure()
                 fig.add_bar(x=sr["month"], y=sr["save_rate"],
                             marker_color=[INCOME_C if v >= 0 else EXPENSE_C
-                                          for v in sr["save_rate"]])
+                                          for v in sr["save_rate"]],
+                            hovertemplate=("月份：%{x}<br>儲蓄率："
+                                           "%{y:.0%}<extra></extra>"))
                 fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
                                   yaxis_tickformat=".0%",
                                   xaxis=dict(type="category"))
@@ -60,7 +64,9 @@ if ctx:
             else:
                 fig = go.Figure()
                 fig.add_bar(x=wp["label"], y=wp["amount"], marker_color=EXPENSE_C,
-                            opacity=0.85)
+                            opacity=0.85,
+                            hovertemplate=("星期%{x}<br>支出："
+                                           "CA$%{y:,.2f}<extra></extra>"))
                 fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
                                   yaxis_title=f"支出（{S}）")
                 st.plotly_chart(fig, width="stretch")

@@ -7,9 +7,9 @@ import streamlit as st
 
 from lib import analytics
 from lib.api import ApiError
-from ui._shared import (BUDGET_C, MONTH_BAR_C, TZ, bar_row, cat_label, chip,
-                        empty_hint, load, person_colors, refresh, sym,
-                        CAT_EMOJI, SPLIT_LABEL)
+from ui._shared import (BUDGET_C, MONTH_BAR_C, TZ, bar_row, bar_track,
+                        cat_detail, cat_label, chip, empty_hint, load,
+                        person_colors, refresh, sym, CAT_EMOJI, SPLIT_LABEL)
 
 PIE_COLORS = ["#3B6FE0", "#E8823E", "#34A853", "#E5484D", "#8E67D6",
               "#E5A63B", "#5B8DBE", "#C98CA7", "#7FA6A0", "#A98467"]
@@ -140,19 +140,31 @@ if ctx:
 
     c2, c3 = st.columns(2)
     with c2, st.container(border=True, key="card_cat"):
-        sub = scope_df(card_head("花在哪些分類", "tg_cat"))
+        cat_month = card_head("花在哪些分類", "tg_cat")
+        sub = scope_df(cat_month)
         bd = analytics.category_breakdown(sub, month=None)
         if bd.empty:
             st.caption("沒有支出記錄")
         else:
             total = bd["amount"].sum()
-            st.markdown("".join(
-                bar_row(cat_label(r.category),
-                        f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small>',
-                        r.amount / bd["amount"].max() * 100)
-                for r in bd.head(6).itertuples()), unsafe_allow_html=True)
+            top = bd["amount"].max()
+            for r in bd.head(6).itertuples():
+                # 分類名做成按鈕（看起來像文字）：點了看這個分類的明細
+                b1, b2 = st.columns([3, 2], vertical_alignment="center")
+                if b1.button(cat_label(r.category), key=f"catlnk_{r.category}",
+                             type="tertiary", help="點看明細"):
+                    cat_detail(cdf, r.category, names, colors,
+                               month=month if cat_month else None)
+                b2.markdown(
+                    f'<div class="bar-right" style="text-align:right">'
+                    f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small></div>',
+                    unsafe_allow_html=True)
+                st.markdown(bar_track(r.amount / top * 100),
+                            unsafe_allow_html=True)
+            st.caption("點分類名稱看那一類的明細")
     with c3, st.container(border=True, key="card_pie"):
-        sub = scope_df(card_head("分類圓餅圖", "tg_pie"))
+        pie_month = card_head("分類圓餅圖", "tg_pie")
+        sub = scope_df(pie_month)
         bd = analytics.category_breakdown(sub, month=None)
         if bd.empty:
             st.caption("沒有支出記錄")
@@ -160,20 +172,31 @@ if ctx:
             total = bd["amount"].sum()
             pie = px.pie(bd, names="category", values="amount", hole=0.62,
                          color_discrete_sequence=PIE_COLORS)
-            pie.update_traces(textinfo="none", sort=False)
+            pie.update_traces(
+                textinfo="none", sort=False,
+                hovertemplate=("分類：%{label}<br>金額：CA$%{value:,.2f}"
+                               "<br>佔比：%{percent}<extra></extra>"))
             pie.update_layout(showlegend=False, height=190,
                               margin=dict(l=10, r=10, t=6, b=6),
                               annotations=[dict(text=f"CA${total:,.2f}<br>"
                                                      f"<span style='font-size:11px;color:#9A9A98'>總支出</span>",
                                                 showarrow=False, font_size=15)])
-            st.plotly_chart(pie, width="stretch", config={"displayModeBar": False})
-            st.markdown("".join(
-                f'<div class="lg-row"><span><span class="lg-dot" '
-                f'style="background:{PIE_COLORS[i % len(PIE_COLORS)]}"></span>'
-                f'{cat_label(r.category)}</span>'
-                f'<span class="lg-pct">{r.amount / total:.0%}</span></div>'
-                for i, r in enumerate(bd.head(6).itertuples())),
-                unsafe_allow_html=True)
+            st.plotly_chart(pie, width="stretch",
+                            config={"displayModeBar": False})
+            # 圖例＝可點的清單（Streamlit 收不到圓餅本身的點擊，改點這裡）
+            for i, r in enumerate(bd.head(6).itertuples()):
+                g1, g2, g3 = st.columns([0.4, 3, 1], vertical_alignment="center")
+                g1.markdown(f'<span class="lg-dot" style="background:'
+                            f'{PIE_COLORS[i % len(PIE_COLORS)]}"></span>',
+                            unsafe_allow_html=True)
+                if g2.button(cat_label(r.category), key=f"catlnk_pie_{r.category}",
+                             type="tertiary", help="點看明細"):
+                    cat_detail(cdf, r.category, names, colors,
+                               month=month if pie_month else None)
+                g3.markdown(f'<div class="lg-pct" style="text-align:right">'
+                            f'{r.amount / total:.0%}</div>',
+                            unsafe_allow_html=True)
+            st.caption("點分類名稱看那一類的明細")
 
     # ---- 每月總開銷 ------------------------------------------------------
     with st.container(border=True, key="card_month"):
@@ -183,7 +206,8 @@ if ctx:
             x=[f"{int(m[5:7])}月" for m in m12["month"]],
             y=m12["expense"], marker_color=MONTH_BAR_C, width=0.35,
             text=[f"CA${v:,.2f}" for v in m12["expense"]],
-            textposition="outside", cliponaxis=False))
+            textposition="outside", cliponaxis=False,
+            hovertemplate="%{x}<br>總支出：CA$%{y:,.2f}<extra></extra>"))
         fig.update_layout(height=240, margin=dict(l=20, r=20, t=24, b=10),
                           xaxis=dict(type="category"),
                           yaxis=dict(visible=False))
@@ -304,6 +328,7 @@ if ctx:
                         if b2.button("🗑️", key=f"dl_{r.id}", type="tertiary",
                                      help="刪除"):
                             del_dlg(r.id)
-                if len(rows) > 50:
-                    st.caption(f"只顯示最近 50 筆（共 {len(rows)} 筆），"
-                               "用上面的篩選縮小範圍")
+            # 提示放在 dtl 容器外面：容器裡的每個直接子元素都會被畫成一列
+            if len(rows) > 50:
+                st.caption(f"只顯示最近 50 筆（共 {len(rows)} 筆），"
+                           "用上面的篩選縮小範圍")

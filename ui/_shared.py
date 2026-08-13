@@ -64,11 +64,16 @@ def chip(pid: str, names: dict, colors: dict) -> str:
 def bar_row(label_html: str, right_html: str, pct: float,
             color: str = BAR_C) -> str:
     """一行「標籤＋金額＋進度條」（花在哪些分類、預算共用）。"""
-    pct = max(0.0, min(100.0, pct))
     return (f'<div class="bar-row"><div class="bar-head">'
             f'<span>{label_html}</span><span class="bar-right">{right_html}</span></div>'
-            f'<div class="bar-track"><div class="bar-fill" '
-            f'style="width:{pct:.1f}%;background:{color}"></div></div></div>')
+            f'{bar_track(pct, color)}</div>')
+
+
+def bar_track(pct: float, color: str = BAR_C) -> str:
+    """只有進度條那一條（標籤要做成可點按鈕時，頭尾自己排）。"""
+    pct = max(0.0, min(100.0, pct))
+    return (f'<div class="bar-track"><div class="bar-fill" '
+            f'style="width:{pct:.1f}%;background:{color}"></div></div>')
 FALLBACK_RATES = {"CAD": 1.0, "USD": 1.35, "TWD": 0.044}
 S = CURRENCIES["CAD"]          # 統計一律 CAD
 MS = S.replace("$", "\\$")     # markdown 語境（成對 $ 會被當 LaTeX）
@@ -119,9 +124,29 @@ def get_client() -> GasClient | None:
     return GasClient(url, token)
 
 
-@st.cache_data(ttl=60, show_spinner="讀取帳本中…")
-def _fetch_all(url: str, token: str) -> dict:
-    return GasClient(url, token).get_all()
+@st.cache_data(ttl=300, show_spinner="讀取帳本中…")
+def _bundle(url: str, token: str) -> dict:
+    """抓 Sheet ＋轉表格＋換匯，整包快取：切頁面時直接吃快取，不再重抓重算。
+
+    自己在網站上新增/修改/刪除會呼叫 refresh() 清快取；對方用捷徑記的
+    最多 5 分鐘後出現，想立刻看到就按側邊欄的「重新整理資料」。
+    """
+    data = GasClient(url, token).get_all()
+    # 空 list 要保留（例：fixed_categories=[] = 使用者明確說沒有固定支出）
+    meta = {**DEFAULT_META,
+            **{k: v for k, v in (data.get("meta") or {}).items()
+               if v or isinstance(v, list)}}
+    df = analytics.to_df(data.get("transactions") or [])
+    cdf = analytics.to_cad(df, fetch_rates())  # 統計一律用這個（全 CAD）
+    ids = [p["id"] for p in meta["people"]]
+    if len(ids) == 2:
+        # owner = 這筆帳實際算誰的：代墊(advance)歸對方，其餘歸付款人
+        other = {ids[0]: ids[1], ids[1]: ids[0]}
+        for d in (df, cdf):
+            is_adv = (d["type"] == "expense") & (d["split"] == "advance")
+            d["owner"] = d["person"].where(~is_adv, d["person"].map(other))
+    return {"df": df, "cdf": cdf, "meta": meta,
+            "names": {p["id"]: p["name"] for p in meta["people"]}}
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
@@ -149,27 +174,13 @@ def load() -> dict | None:
     if flash := st.session_state.pop("flash", None):
         st.toast(flash, icon="✅")
     try:
-        data = _fetch_all(client.url, client.token)
+        bundle = _bundle(client.url, client.token)
     except Exception as e:  # noqa: BLE001 — 連線問題都收在這裡顯示
         st.error(f"連不上 Google Sheet：{e}")
         if st.button("重試"):
             refresh()
         return None
-    # 空 list 要保留（例：fixed_categories=[] = 使用者明確說沒有固定支出）
-    meta = {**DEFAULT_META,
-            **{k: v for k, v in (data.get("meta") or {}).items()
-               if v or isinstance(v, list)}}
-    df = analytics.to_df(data.get("transactions") or [])
-    cdf = analytics.to_cad(df, fetch_rates())  # 統計一律用這個（全 CAD）
-    ids = [p["id"] for p in meta["people"]]
-    if len(ids) == 2:
-        # owner = 這筆帳實際算誰的：代墊(advance)歸對方，其餘歸付款人
-        other = {ids[0]: ids[1], ids[1]: ids[0]}
-        for d in (df, cdf):
-            is_adv = (d["type"] == "expense") & (d["split"] == "advance")
-            d["owner"] = d["person"].where(~is_adv, d["person"].map(other))
-    names = {p["id"]: p["name"] for p in meta["people"]}
-    return {"client": client, "df": df, "cdf": cdf, "meta": meta, "names": names}
+    return {"client": client, **bundle}
 
 
 def person_view(cdf: pd.DataFrame, meta: dict, key: str) -> pd.DataFrame:
@@ -180,6 +191,56 @@ def person_view(cdf: pd.DataFrame, meta: dict, key: str) -> pd.DataFrame:
         format_func=lambda v: "👫 綜合" if v == "all" else names[v],
         default="all", key=key)
     return analytics.filter_person(cdf, None if view in (None, "all") else view)
+
+
+def month_label(month: str | None) -> str:
+    return f"{int(month[5:7])}月" if month else "全部"
+
+
+def cat_detail(cdf: pd.DataFrame, category: str, names: dict, colors: dict,
+               month: str | None = None, person: str | None = None) -> None:
+    """點分類（長條/圓餅/損益表）→ 彈窗看這個分類的明細。金額一律 CAD。"""
+    sub = cdf[cdf["category"] == category]
+    if month:
+        sub = sub[sub["month"] == month]
+    if person:
+        sub = analytics.filter_person(sub, person)
+    sub = sub.sort_values(["date", "created_ts"], ascending=False)
+    who = f"（{names.get(person, person)}）" if person else ""
+
+    @st.dialog(f"{cat_label(category)}　{month_label(month)}明細{who}", width="large")
+    def _dlg():
+        if sub.empty:
+            st.caption("這個範圍沒有記錄")
+            return
+        total = float(sub["amount"].sum())
+        n = len(sub)
+        st.markdown(
+            f'<div class="dlg-sum"><span>{n} 筆</span>'
+            f'<span>合計 <b>CA&#36;{total:,.2f}</b></span>'
+            f'<span>平均 CA&#36;{total / n:,.2f}</span></div>',
+            unsafe_allow_html=True)
+        rows = ""
+        for r in sub.itertuples():
+            note = (f'<br><span class="dtl-mut" style="font-size:0.78rem">'
+                    f'{r.note}</span>' if r.note else "")
+            split_txt = ("收入" if r.type == "income"
+                         else SPLIT_LABEL.get(r.split, r.split))
+            color = "#34A853" if r.type == "income" else "#1C1C1E"
+            rows += (f'<tr><td class="mut">{r.date.strftime("%m/%d")}</td>'
+                     f'<td>{r.item}{note}</td>'
+                     f'<td>{chip(r.person, names, colors)}</td>'
+                     f'<td class="mut">{split_txt}</td>'
+                     f'<td class="amt" style="color:{color}">'
+                     f'CA&#36;{r.amount:,.2f}</td></tr>')
+        st.markdown(
+            f'<div class="tbl-scroll"><table class="dt"><thead><tr>'
+            f'<th>日期</th><th>品項</th><th>付款人</th><th>分攤</th>'
+            f'<th style="text-align:right">金額</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
+        st.caption("金額都換算成 CAD；要改內容到「📊 總覽」的明細按 ✏️。")
+
+    _dlg()
 
 
 def empty_hint(sub: pd.DataFrame) -> bool:

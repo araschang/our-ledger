@@ -86,7 +86,8 @@ if ctx:
                 if st.button("看明細", type="primary", width="stretch"):
                     cat_detail(sub, pick, names, colors,
                                month=None if pmonth == "全部" else pmonth,
-                               who=names.get(view) if view else None)
+                               who=names.get(view) if view else None,
+                               ttype="expense")
 
         with st.container(border=True, key="card_top"):
             st.markdown('<div class="card-title">💥 大額支出 Top 10</div>',

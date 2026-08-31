@@ -72,30 +72,34 @@ if ctx:
                             f'<span class="pl-amt">{fmt(amount)}</span></div>',
                             unsafe_allow_html=True)
 
-            def subs(by, tag):
-                """分類細項：名字做成按鈕，點了看那一類這個月的每一筆。"""
+            def subs(by, tag, ttype):
+                """分類細項：名字做成按鈕，點了看那一類這個月的每一筆。
+
+                ttype 要傳：「其他」這種收入支出同名的分類，不傳會兩邊都跑出來。
+                """
                 for c, v in by.items():
                     s1, s2 = st.columns([3, 2], vertical_alignment="center")
                     if s1.button(cat_label(c), key=f"plcat_{tag}_{c}",
                                  type="tertiary", help="點看明細"):
                         # sub 已是該視角的份額（平分已折半），彈窗直接照著顯示
                         cat_detail(sub, c, names, colors, month=month,
-                                   who=names.get(view) if view else None)
+                                   who=names.get(view) if view else None,
+                                   ttype=ttype)
                     s2.markdown(f'<div class="pl-num">{fmt(v)}</div>',
                                 unsafe_allow_html=True)
 
             sec("收入", p["income"],
                 delta(p["income"], prev["income"] if prev else None))
-            subs(p["income_by"], "inc")
+            subs(p["income_by"], "inc", "income")
             sec("固定支出", p["fixed"],
                 delta(p["fixed"], prev["fixed"] if prev else None, invert=True),
                 sign="−")
-            subs(p["fixed_by"], "fix")
+            subs(p["fixed_by"], "fix", "expense")
             tot("可支配餘裕", p["disposable"])
             sec("變動支出", p["variable"],
                 delta(p["variable"], prev["variable"] if prev else None,
                       invert=True), sign="−")
-            subs(p["variable_by"], "var")
+            subs(p["variable_by"], "var", "expense")
             sr = ("" if p["save_rate"] is None
                   else f'　<span class="card-sub">儲蓄率 {p["save_rate"]:.0%}</span>')
             tot(f"淨存{sr}", p["net"])

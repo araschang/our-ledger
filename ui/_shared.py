@@ -213,18 +213,23 @@ def month_label(month: str | None) -> str:
 
 
 def cat_detail(cdf: pd.DataFrame, category: str, names: dict, colors: dict,
-               month: str | None = None, who: str | None = None) -> None:
+               month: str | None = None, who: str | None = None,
+               ttype: str | None = None) -> None:
     """點分類（長條/圓餅/損益表）→ 彈窗看這個分類的明細。金額一律 CAD。
 
     who = 人名，個人視角時傳（傳進來的 cdf 已經是那個人的份額，平分只算一半），
     彈窗會標明白，免得跟明細頁的原始金額對不起來看了霧煞煞。
+    ttype = 'expense'/'income'：同名分類（例：「其他」收入支出都有）只看這一邊。
     """
     sub = cdf[cdf["category"] == category]
+    if ttype:
+        sub = sub[sub["type"] == ttype]
     if month:
         sub = sub[sub["month"] == month]
     sub = sub.sort_values(["date", "created_ts"], ascending=False)
 
-    @st.dialog(f"{cat_label(category)}　{month_label(month)}明細"
+    kind = {"income": "收入", "expense": "支出"}.get(ttype, "")
+    @st.dialog(f"{cat_label(category)}　{month_label(month)}{kind}明細"
                + (f"（{who}）" if who else ""), width="large")
     def _dlg():
         if sub.empty:

@@ -155,7 +155,8 @@ if ctx:
                 if b1.button(cat_label(r.category), key=f"catlnk_{r.category}",
                              type="tertiary", help="點看明細"):
                     cat_detail(cdf, r.category, names, colors,
-                               month=month if cat_month else None)
+                               month=month if cat_month else None,
+                               ttype="expense")
                 b2.markdown(
                     f'<div class="bar-right" style="text-align:right">'
                     f'{_fmt(r.amount)} <small>{r.amount / total:.0%}</small></div>',
@@ -193,7 +194,8 @@ if ctx:
                 if g2.button(cat_label(r.category), key=f"catlnk_pie_{r.category}",
                              type="tertiary", help="點看明細"):
                     cat_detail(cdf, r.category, names, colors,
-                               month=month if pie_month else None)
+                               month=month if pie_month else None,
+                               ttype="expense")
                 g3.markdown(f'<div class="lg-pct" style="text-align:right">'
                             f'{r.amount / total:.0%}</div>',
                             unsafe_allow_html=True)

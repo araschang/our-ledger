@@ -203,7 +203,9 @@ def person_view(cdf: pd.DataFrame, meta: dict, key: str) -> pd.DataFrame:
         "視角", ["all"] + [p["id"] for p in meta["people"]],
         format_func=lambda v: "👫 綜合" if v == "all" else names[v],
         default="all", key=key)
-    return analytics.filter_person(cdf, None if view in (None, "all") else view)
+    pid = None if view in (None, "all") else view
+    # 個人視角＝自己實際負擔的部分（平分只算一半），不是「他付過的錢」
+    return analytics.personal_view(cdf, pid, [p["id"] for p in meta["people"]])
 
 
 def month_label(month: str | None) -> str:
@@ -211,17 +213,19 @@ def month_label(month: str | None) -> str:
 
 
 def cat_detail(cdf: pd.DataFrame, category: str, names: dict, colors: dict,
-               month: str | None = None, person: str | None = None) -> None:
-    """點分類（長條/圓餅/損益表）→ 彈窗看這個分類的明細。金額一律 CAD。"""
+               month: str | None = None, who: str | None = None) -> None:
+    """點分類（長條/圓餅/損益表）→ 彈窗看這個分類的明細。金額一律 CAD。
+
+    who = 人名，個人視角時傳（傳進來的 cdf 已經是那個人的份額，平分只算一半），
+    彈窗會標明白，免得跟明細頁的原始金額對不起來看了霧煞煞。
+    """
     sub = cdf[cdf["category"] == category]
     if month:
         sub = sub[sub["month"] == month]
-    if person:
-        sub = analytics.filter_person(sub, person)
     sub = sub.sort_values(["date", "created_ts"], ascending=False)
-    who = f"（{names.get(person, person)}）" if person else ""
 
-    @st.dialog(f"{cat_label(category)}　{month_label(month)}明細{who}", width="large")
+    @st.dialog(f"{cat_label(category)}　{month_label(month)}明細"
+               + (f"（{who}）" if who else ""), width="large")
     def _dlg():
         if sub.empty:
             st.caption("這個範圍沒有記錄")
@@ -251,7 +255,8 @@ def cat_detail(cdf: pd.DataFrame, category: str, names: dict, colors: dict,
             f'<th>日期</th><th>品項</th><th>付款人</th><th>分攤</th>'
             f'<th style="text-align:right">金額</th></tr></thead>'
             f'<tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
-        st.caption("金額都換算成 CAD；要改內容到「📊 總覽」的明細按 ✏️。")
+        st.caption((f"金額只算 {who} 自己負擔的部分（平分的算一半）；" if who else "")
+                   + "金額都換算成 CAD；要改內容到「📊 總覽」的明細按 ✏️。")
 
     _dlg()
 

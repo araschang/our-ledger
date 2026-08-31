@@ -78,8 +78,9 @@ if ctx:
                     s1, s2 = st.columns([3, 2], vertical_alignment="center")
                     if s1.button(cat_label(c), key=f"plcat_{tag}_{c}",
                                  type="tertiary", help="點看明細"):
+                        # sub 已是該視角的份額（平分已折半），彈窗直接照著顯示
                         cat_detail(sub, c, names, colors, month=month,
-                                   person=view)
+                                   who=names.get(view) if view else None)
                     s2.markdown(f'<div class="pl-num">{fmt(v)}</div>',
                                 unsafe_allow_html=True)
 

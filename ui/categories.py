@@ -13,6 +13,8 @@ if ctx:
     df, cdf, meta, names = ctx["df"], ctx["cdf"], ctx["meta"], ctx["names"]
     colors = person_colors(meta)
     sub = person_view(cdf, meta, key="cat_view")
+    view = st.session_state.get("cat_view")
+    view = None if view in (None, "all") else view
     if not empty_hint(sub):
         with st.container(border=True, key="card_catm"):
             st.markdown('<div class="card-title">📚 逐月分類（最近 6 個月）</div>',
@@ -47,7 +49,7 @@ if ctx:
         with st.container(border=True, key="card_pc"):
             st.markdown('<div class="card-title">👫 兩人各花在哪些分類</div>',
                         unsafe_allow_html=True)
-            pc = analytics.person_category(cdf)
+            pc = analytics.person_category(cdf, [q["id"] for q in meta["people"]])
             if pc.empty:
                 st.caption("沒有支出記錄")
             else:
@@ -83,7 +85,8 @@ if ctx:
                 pmonth = p2.selectbox("月份", months, label_visibility="collapsed")
                 if st.button("看明細", type="primary", width="stretch"):
                     cat_detail(sub, pick, names, colors,
-                               month=None if pmonth == "全部" else pmonth)
+                               month=None if pmonth == "全部" else pmonth,
+                               who=names.get(view) if view else None)
 
         with st.container(border=True, key="card_top"):
             st.markdown('<div class="card-title">💥 大額支出 Top 10</div>',
@@ -95,10 +98,13 @@ if ctx:
                 orig = df.set_index("id")
                 top["人"] = top["person"].map(names).fillna(top["person"])
                 top["日期"] = top["date"].dt.strftime("%Y/%m/%d")
+                # 綜合視角顯示原幣原額；個人視角顯示他自己負擔的那份（已折半）
                 top["金額"] = top.apply(
-                    lambda r: f"{sym(orig.loc[r['id'], 'currency'])}"
-                              f"{orig.loc[r['id'], 'amount']:,.2f}"
-                    if r["id"] in orig.index else f"{S}{r['amount']:,.2f}", axis=1)
+                    lambda r: f"{S}{r['amount']:,.2f}" if view
+                    else (f"{sym(orig.loc[r['id'], 'currency'])}"
+                          f"{orig.loc[r['id'], 'amount']:,.2f}"
+                          if r["id"] in orig.index else f"{S}{r['amount']:,.2f}"),
+                    axis=1)
                 st.dataframe(top[["日期", "人", "category", "item", "金額", "note"]],
                              width="stretch", hide_index=True,
                              column_config={"category": "分類", "item": "品項",

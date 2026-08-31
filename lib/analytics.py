@@ -41,11 +41,40 @@ def to_cad(df: pd.DataFrame, rates: dict) -> pd.DataFrame:
 
 
 def filter_person(df: pd.DataFrame, person: str | None) -> pd.DataFrame:
-    """person=None 代表綜合視角。有 owner 欄（代墊歸屬修正後）優先用它。"""
+    """person=None 代表綜合視角。有 owner 欄（代墊歸屬修正後）優先用它。
+
+    只挑列、不動金額——「這筆帳歸誰」用的。個人損益/統計要用 personal_view。
+    """
     if person is None:
         return df
     col = "owner" if "owner" in df.columns else "person"
     return df[df[col] == person]
+
+
+def personal_view(df: pd.DataFrame, person: str | None,
+                  ids: list[str]) -> pd.DataFrame:
+    """某個人的「自己的帳」：金額換成他實際負擔的部分。
+
+    支出：平分(half)→各人一半、自己(own)→付錢的人全額、
+          代墊(advance)→不是付錢的那個人扛全額（付的人 0）。
+    收入：記的人全額。
+    person=None（綜合視角）原樣回傳：家庭總額本來就是全額。
+    """
+    if person is None or df.empty:
+        return df
+    n = max(1, len(ids))
+    is_exp = df["type"] == "expense"
+    is_half = is_exp & (df["split"] == "half")
+    is_adv = is_exp & (df["split"] == "advance")
+    mine = df["person"] == person
+    frac = pd.Series(0.0, index=df.index)
+    frac[~is_exp & mine] = 1.0                       # 收入
+    frac[is_exp & ~is_half & ~is_adv & mine] = 1.0   # own
+    frac[is_half] = 1.0 / n                          # 平分
+    frac[is_adv & ~mine] = 1.0                       # 別人幫我墊的，全額算我的
+    out = df.copy()
+    out["amount"] = out["amount"] * frac
+    return out[frac > 0]
 
 
 def monthly_summary(df: pd.DataFrame, last_n: int = 12) -> pd.DataFrame:
@@ -86,16 +115,26 @@ def category_monthly(df: pd.DataFrame, txn_type: str = "expense",
     return out.sort_values(["month", "amount"], ascending=[True, False])
 
 
-def person_category(df: pd.DataFrame, month: str | None = None) -> pd.DataFrame:
-    """分類×人 支出（long form: category, person, amount）。代墊歸實際主人。"""
+def person_category(df: pd.DataFrame, ids: list[str],
+                    month: str | None = None) -> pd.DataFrame:
+    """分類×人 支出（long form: category, person, amount）。
+
+    每個人算的是自己實際負擔的部分：平分各一半、代墊歸被墊的那個人。
+    """
     sub = df[df["type"] == "expense"]
     if month:
         sub = sub[sub["month"] == month]
     if sub.empty:
         return pd.DataFrame(columns=["category", "person", "amount"])
-    col = "owner" if "owner" in sub.columns else "person"
-    out = sub.groupby(["category", col])["amount"].sum().reset_index()
-    return out.rename(columns={col: "person"})
+    parts = []
+    for pid in ids:
+        mine = personal_view(sub, pid, ids)
+        if not mine.empty:
+            parts.append(mine.groupby("category")["amount"].sum()
+                         .reset_index().assign(person=pid))
+    if not parts:
+        return pd.DataFrame(columns=["category", "person", "amount"])
+    return pd.concat(parts, ignore_index=True)[["category", "person", "amount"]]
 
 
 def cumulative_net(df: pd.DataFrame) -> pd.DataFrame:

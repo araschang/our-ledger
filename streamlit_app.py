@@ -1,7 +1,67 @@
 """我們的記帳本 — 入口：登入 + 多頁導覽（版面照 ~/awm 的套路）。"""
+import importlib
+import pathlib
+import sys
+
 import streamlit as st
 
-from ui._shared import secret
+
+@st.cache_resource
+def _module_mtimes() -> dict:
+    """記住各模組檔案的修改時間（跨 session 共用，行程活著就一直在）。"""
+    return {}
+
+
+def _app_modules():
+    """目前載進來的自家模組（ui/、lib/）。"""
+    for name, mod in list(sys.modules.items()):
+        if name.startswith(("ui.", "lib.")) and getattr(mod, "__file__", None):
+            yield name, mod
+
+
+def _file_mtime(mod):
+    try:
+        return pathlib.Path(mod.__file__).stat().st_mtime
+    except OSError:
+        return None
+
+
+def _reload_changed_modules() -> None:
+    """程式碼換版後自動重新載入 ui/ 和 lib/ 的模組。
+
+    Streamlit Cloud 部署新版時不會重啟行程：頁面檔（ui/xxx.py）每次都重讀，
+    但 import 進來的模組留在 sys.modules 還是舊的 → 新頁面配舊模組，
+    會炸 ImportError，得手動 Reboot。這裡用檔案 mtime 偵測，換版就自己重載。
+    """
+    mtimes = _module_mtimes()
+    changed = False
+    for name, mod in _app_modules():
+        mt = _file_mtime(mod)
+        # 沒記錄過的先跳過（冷啟動時本來就是新的），交給 _record_mtimes 記
+        if mt is not None and name in mtimes and mtimes[name] != mt:
+            try:
+                importlib.reload(mod)
+                changed = True
+            except Exception:  # noqa: BLE001 — 重載失敗就維持舊的，別讓整個 app 掛掉
+                pass
+            mtimes[name] = mt
+    if changed:
+        st.cache_data.clear()  # 新程式碼配新資料，別吃到舊結構的快取
+
+
+def _record_mtimes() -> None:
+    """把這輪跑完後載到的模組時間記下來——要在頁面執行完才做，
+    因為冷啟動時這些模組是在下面的 import／pg.run() 才進 sys.modules 的。"""
+    mtimes = _module_mtimes()
+    for name, mod in _app_modules():
+        mt = _file_mtime(mod)
+        if mt is not None:
+            mtimes.setdefault(name, mt)
+
+
+_reload_changed_modules()
+
+from ui._shared import secret  # noqa: E402 — 要在上面重載完才 import
 
 st.set_page_config(page_title="我們的記帳本", page_icon="💕", layout="wide")
 st.logo("assets/logo.svg", size="large")
@@ -363,3 +423,4 @@ if password_gate():
             st.rerun()
         st.caption("資料每 5 分鐘自動更新")
     pg.run()
+    _record_mtimes()

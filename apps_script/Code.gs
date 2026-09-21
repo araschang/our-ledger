@@ -124,7 +124,22 @@ function readTxns_() {
   HEADERS.forEach(function (h) { idx[h] = values[0].indexOf(h); });
   const out = [];
   for (let r = 1; r < values.length; r++) {
-    if (values[r][idx.id]) out.push(rowToTxn_(values[r], idx));
+    const row = values[r];
+    // 手動直接在 Sheet 打的列沒有 id：有內容就補發 id 寫回表，
+    // 別默默跳過（id 是編輯/刪除的鑰匙，只有這裡能發）
+    if (!row[idx.id] && (row[idx.date] || row[idx.item] || row[idx.amount])) {
+      row[idx.id] = Utilities.getUuid().slice(0, 8);
+      sh.getRange(r + 1, idx.id + 1).setValue(row[idx.id]);
+      if (!row[idx.created_at]) {
+        row[idx.created_at] = new Date();
+        sh.getRange(r + 1, idx.created_at + 1).setValue(row[idx.created_at]);
+      }
+      if (idx.source >= 0 && !row[idx.source]) {
+        row[idx.source] = 'manual';
+        sh.getRange(r + 1, idx.source + 1).setValue('manual');
+      }
+    }
+    if (row[idx.id]) out.push(rowToTxn_(row, idx));
   }
   return out;
 }

@@ -1,4 +1,5 @@
 """各頁共用：資料載入/快取、幣別、匯率、settlement 卡片。"""
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -8,6 +9,7 @@ import streamlit as st
 
 from lib import analytics
 from lib.api import GasClient
+from lib.pg import PgClient
 
 TZ = ZoneInfo("America/Vancouver")  # 「今天」以溫哥華為準，別用主機(UTC)時間
 CURRENCIES = {"CAD": "CA$", "USD": "US$", "TWD": "NT$"}
@@ -114,13 +116,24 @@ def sym(currency: str) -> str:
 
 
 def secret(key: str, default: str = "") -> str:
+    """先看 st.secrets（Streamlit Cloud／本機 secrets.toml），再看環境變數（Docker 自架）。"""
     try:
-        return st.secrets.get(key, default)
+        val = st.secrets.get(key)
     except FileNotFoundError:
-        return default
+        val = None
+    return val or os.environ.get(key, default)
 
 
-def get_client() -> GasClient | None:
+def client_for(url: str, token: str) -> GasClient | PgClient:
+    """postgres:// 開頭走自架資料庫，其餘當 Apps Script URL。"""
+    if url.startswith(("postgres://", "postgresql://")):
+        return PgClient(url, token)
+    return GasClient(url, token)
+
+
+def get_client() -> GasClient | PgClient | None:
+    if dsn := secret("DATABASE_URL"):
+        return PgClient(dsn)
     url = secret("GAS_URL") or st.session_state.get("gas_url", "")
     token = secret("GAS_TOKEN") or st.session_state.get("gas_token", "")
     if not url:
@@ -144,7 +157,7 @@ def _bundle(url: str, token: str) -> dict:
     自己在網站上新增/修改/刪除會呼叫 refresh() 清快取；對方用捷徑記的
     最多 5 分鐘後出現，想立刻看到就按側邊欄的「重新整理資料」。
     """
-    data = GasClient(url, token).get_all()
+    data = client_for(url, token).get_all()
     # 空 list 要保留（例：fixed_categories=[] = 使用者明確說沒有固定支出）
     meta = {**DEFAULT_META,
             **{k: v for k, v in (data.get("meta") or {}).items()
@@ -189,7 +202,7 @@ def load() -> dict | None:
     try:
         bundle = _bundle(client.url, client.token)
     except Exception as e:  # noqa: BLE001 — 連線問題都收在這裡顯示
-        st.error(f"連不上 Google Sheet：{e}")
+        st.error(f"連不上帳本資料庫：{e}")
         if st.button("重試"):
             refresh()
         return None

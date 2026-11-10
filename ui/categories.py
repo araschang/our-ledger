@@ -3,7 +3,7 @@ import plotly.express as px
 import streamlit as st
 
 from lib import analytics
-from ui._shared import (S, cat_detail, empty_hint, load, person_colors,
+from ui._shared import (S, cat_detail, chart, empty_hint, load, person_colors,
                         person_view, sym)
 
 st.title("🧾 分類分析")
@@ -44,7 +44,7 @@ if ctx:
                                   legend_title_text="",
                                   uniformtext=dict(mode="hide", minsize=10),
                                   xaxis=dict(type="category"))
-                st.plotly_chart(fig, width="stretch")
+                chart(fig)
 
         with st.container(border=True, key="card_pc"):
             st.markdown('<div class="card-title">👫 兩人各花在哪些分類</div>',
@@ -67,7 +67,7 @@ if ctx:
                                   xaxis_title=f"支出（{S}）", yaxis_title="",
                                   yaxis=dict(autorange="reversed"),
                                   legend_title_text="")
-                st.plotly_chart(fig, width="stretch")
+                chart(fig)
 
         # ---- 挑一個分類看明細 ------------------------------------------------
         with st.container(border=True, key="card_pick"):

@@ -4,6 +4,7 @@ import pathlib
 import sys
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 @st.cache_resource
@@ -305,6 +306,9 @@ st.markdown(
     .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch;
                   max-width: 100%; }
     .tbl-scroll table { min-width: 420px; }
+    /* 表頭和第一欄（月份、日期）不折行：欄多時表格自己往右捲，不要「8／月」直排 */
+    .tbl-scroll table.dt th,
+    .tbl-scroll table.dt td:first-child { white-space: nowrap; }
 
     /* 損益表 */
     table.pl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
@@ -323,6 +327,27 @@ st.markdown(
     .lg-dot { display: inline-block; width: 10px; height: 10px;
               border-radius: 3px; margin-right: 7px; }
     .lg-pct { color: #9A9A98; }
+
+    /* 分頁列（取代藏在 ≫ 側邊欄裡的選單；手機版見下方，固定在螢幕底部） */
+    .st-key-tabbar { gap: 0.3rem !important; margin: -0.5rem 0 0.8rem; }
+    .st-key-tabbar [data-testid="stPageLink"] a {
+      border-radius: 999px; padding: 0.25rem 0.75rem; }
+    .st-key-tabbar [data-testid="stButton"] button {
+      border: none; background: none; min-height: 0; padding: 0.25rem 0.6rem; }
+
+    /* 數字鍵盤那段 script 的 0 高度 iframe：不佔版面 */
+    [data-testid="stElementContainer"]:has(> iframe[height="0"]) { display: none; }
+
+    /* 記一筆：金額大字、不要 −／＋（手機上沒人用，還佔位子） */
+    .st-key-amtrow [data-testid^="stNumberInputStep"] { display: none !important; }
+    .st-key-amtrow input[type="number"] { font-size: 1.35rem !important;
+      font-weight: 700; font-variant-numeric: tabular-nums; }
+    /* 分段按鈕撐滿寬（蓋掉卡片裡「本月/全部」那套貼右的規則） */
+    .st-key-rec [data-testid="stButtonGroup"] { width: 100% !important;
+      margin-left: 0 !important; flex-direction: column !important;
+      align-items: stretch !important; gap: 0.25rem; }  /* 標題在上、按鈕在下 */
+    .st-key-rec [data-testid="stElementContainer"]:has(> [data-testid="stButtonGroup"]) {
+      align-self: stretch !important; }
 
     @media (max-width: 640px) {
       .block-container { padding: 2.5rem 0.75rem 1rem 0.75rem !important; }
@@ -385,6 +410,44 @@ st.markdown(
       .st-key-dtl .cur { display: none; }        /* 手機藏 CA$ 前綴省寬 */
       .st-key-dtl .dtl-amt { font-size: 0.85rem; }
       .st-key-dtl [data-testid="stBaseButton-tertiary"] { padding: 0 2px; }
+      /* iPhone Safari：輸入框字小於 16px 一點進去就整頁放大，打完還要兩指縮回來 */
+      input, textarea, [data-baseweb="select"] * { font-size: 16px !important; }
+      h1 { font-size: 1.45rem !important; padding: 0 0 0.3rem !important; }
+      .block-container { padding-top: 1.2rem !important;
+                         padding-bottom: 6.5rem !important; }  /* 留位置給底部分頁列 */
+      /* 底部分頁列：大拇指一點就換頁 */
+      .st-key-tabbar {
+        position: fixed !important; left: 0; right: 0; bottom: 0; z-index: 100;
+        margin: 0 !important; background: #FFFFFF; border-top: 1px solid #E7E7E4;
+        box-shadow: 0 -2px 12px rgba(20,20,20,0.06);
+        padding: 4px 2px calc(6px + env(safe-area-inset-bottom)) !important;
+        flex-wrap: nowrap !important; justify-content: space-around; gap: 0 !important;
+      }
+      .st-key-tabbar > * { flex: 1 1 0 !important; min-width: 0 !important;
+                           width: auto !important; }
+      .st-key-tabbar [data-testid="stPageLink"] a,
+      .st-key-tabbar [data-testid="stButton"] button {
+        flex-direction: column !important; align-items: center !important;
+        justify-content: center !important; gap: 1px !important; width: 100%;
+        padding: 6px 0 !important; border-radius: 10px; min-height: 48px;
+      }
+      .st-key-tabbar [data-testid="stPageLink"] a p { font-size: 0.68rem !important;
+        white-space: nowrap; margin: 0; }
+      /* 記一筆：金額＋幣別維持同一列（預設手機會把欄位全部直疊） */
+      .st-key-amtrow [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+      .st-key-amtrow [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important; }
+      /* 分類小膠囊、分段按鈕：手指點得到的大小；分類排緊一點，一列塞得下 3～4 個 */
+      .st-key-rec [data-testid="stButtonGroup"] button { min-height: 40px; }
+      .st-key-rec [class*="st-key-cat_"] [data-testid="stButtonGroup"] > div {
+        gap: 6px !important; }
+      .st-key-rec [class*="st-key-cat_"] button { padding: 4px 10px !important; }
+      /* 指標卡（損益表 2×2、趨勢 3 格）並排，不要拉成一張張長卡片 */
+      [class*="st-key-kpis"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+      [class*="st-key-kpis"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important; }
+      [class*="st-key-kpis"] [data-testid="stMetricValue"] { font-size: 1.3rem; }
+      [class*="st-key-kpis"] [data-testid="stMetric"] { padding: 0.7rem 0.75rem 0.6rem; }
     }
     </style>
     """,
@@ -408,19 +471,33 @@ def password_gate() -> bool:
 
 
 if password_gate():
-    pg = st.navigation([
-        st.Page("ui/record.py", title="記一筆", icon="✍️", default=True),
-        st.Page("ui/overview.py", title="總覽", icon="📊", url_path="overview"),
-        st.Page("ui/categories.py", title="分類分析", icon="🧾", url_path="categories"),
-        st.Page("ui/pnl.py", title="損益表", icon="📑", url_path="pnl"),
-        st.Page("ui/trends.py", title="收支趨勢", icon="📈", url_path="trends"),
-        st.Page("ui/settings.py", title="設定", icon="⚙️", url_path="settings"),
-    ])
-    with st.sidebar:
+    # (頁面, 分頁列上的短名)
+    pages = [
+        (st.Page("ui/record.py", title="記一筆", icon="✍️", default=True), "記一筆"),
+        (st.Page("ui/overview.py", title="總覽", icon="📊", url_path="overview"), "總覽"),
+        (st.Page("ui/categories.py", title="分類分析", icon="🧾",
+                 url_path="categories"), "分類"),
+        (st.Page("ui/pnl.py", title="損益表", icon="📑", url_path="pnl"), "損益"),
+        (st.Page("ui/trends.py", title="收支趨勢", icon="📈", url_path="trends"), "趨勢"),
+        (st.Page("ui/settings.py", title="設定", icon="⚙️", url_path="settings"), "設定"),
+    ]
+    # 內建選單在手機上會縮進左上角 ≫（換頁要點兩下），改用自己的分頁列
+    pg = st.navigation([p for p, _ in pages], position="hidden")
+    with st.container(key="tabbar", horizontal=True):
+        for page, short in pages:
+            st.page_link(page, label=short)
         # 資料整包快取 5 分鐘（切頁面才會快）；對方剛用捷徑記的想馬上看到就按這個
-        if st.button("🔄 重新整理資料", width="stretch"):
+        if st.button("🔄", key="refresh_btn",
+                     help="重新整理資料（平常每 5 分鐘自動更新）"):
             st.cache_data.clear()
             st.rerun()
-        st.caption("資料每 5 分鐘自動更新")
+    # 金額欄叫出 iPhone 的數字鍵盤：Streamlit 沒有 inputmode 參數，只能從頁面上補
+    components.html("""<script>
+      const doc = window.parent.document;
+      const fix = () => doc.querySelectorAll('input[type=number]:not([inputmode])')
+        .forEach(e => e.setAttribute('inputmode', 'decimal'));
+      fix();
+      new MutationObserver(fix).observe(doc.body, {childList: true, subtree: true});
+    </script>""", height=0)
     pg.run()
     _record_mtimes()

@@ -279,6 +279,20 @@ def cat_detail(cdf: pd.DataFrame, category: str, names: dict, colors: dict,
     _dlg()
 
 
+def chart(fig, **kw):
+    """畫 plotly 圖（全站統一用這個）。
+
+    鎖住縮放／拖曳：手機上手指放在圖表上滑，預設會被圖表吃掉拿去 zoom，
+    頁面捲不動（收支趨勢整頁都是圖，等於卡死）。鎖住後滑動＝捲頁面，
+    點一下柱子／扇形照樣跳出提示。工具列（下載／縮放鈕）一併拿掉。
+    """
+    fig.update_layout(dragmode=False)
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    config = {"displayModeBar": False, "scrollZoom": False, **kw.pop("config", {})}
+    return st.plotly_chart(fig, width="stretch", config=config, **kw)
+
+
 def empty_hint(sub: pd.DataFrame) -> bool:
     if sub.empty:
         st.info("還沒有任何記錄，先去「記一筆」開張吧！")

@@ -8,7 +8,7 @@ import streamlit as st
 from lib import analytics
 from lib.api import ApiError
 from ui._shared import (BUDGET_C, MONTH_BAR_C, TZ, bar_row, bar_track,
-                        cat_detail, cat_label, cat_options, chip, empty_hint,
+                        cat_detail, cat_label, cat_options, chart, chip, empty_hint,
                         load, person_colors, refresh, sym, CAT_EMOJI,
                         SPLIT_LABEL)
 
@@ -183,8 +183,7 @@ if ctx:
                               annotations=[dict(text=f"CA${total:,.2f}<br>"
                                                      f"<span style='font-size:11px;color:#9A9A98'>總支出</span>",
                                                 showarrow=False, font_size=15)])
-            st.plotly_chart(pie, width="stretch",
-                            config={"displayModeBar": False})
+            chart(pie)
             # 圖例＝可點的清單（Streamlit 收不到圓餅本身的點擊，改點這裡）
             for i, r in enumerate(bd.head(6).itertuples()):
                 g1, g2, g3 = st.columns([0.4, 3, 1], vertical_alignment="center")
@@ -214,7 +213,7 @@ if ctx:
         fig.update_layout(height=240, margin=dict(l=20, r=20, t=24, b=10),
                           xaxis=dict(type="category"),
                           yaxis=dict(visible=False))
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        chart(fig)
 
     # ---- 明細 ------------------------------------------------------------
     with st.container(border=True, key="card_detail"):

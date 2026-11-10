@@ -175,7 +175,7 @@ def pnl(df: pd.DataFrame, fixed_cats: list[str],
         month: str | None = None) -> dict:
     """個人損益表：收入 → 固定支出 → 可支配餘裕 → 變動支出 → 淨存。
 
-    回傳 {'income', 'fixed', 'variable', 'disposable', 'net',
+    回傳 {'income', 'fixed', 'variable', 'expense'(=固定+變動), 'disposable', 'net',
           'save_rate', 'fixed_ratio',
           'income_by', 'fixed_by', 'variable_by'}（*_by = {分類: 金額} 由大到小）
     """
@@ -197,6 +197,7 @@ def pnl(df: pd.DataFrame, fixed_cats: list[str],
     net = income - fixed_t - var_t
     return {
         "income": income, "fixed": fixed_t, "variable": var_t,
+        "expense": fixed_t + var_t,
         "disposable": income - fixed_t, "net": net,
         "save_rate": (net / income) if income > 0 else None,
         "fixed_ratio": (fixed_t / income) if income > 0 else None,
@@ -207,16 +208,16 @@ def pnl(df: pd.DataFrame, fixed_cats: list[str],
 
 def pnl_yearly(df: pd.DataFrame, fixed_cats: list[str],
                year: str) -> pd.DataFrame:
-    """某年逐月損益。columns: month, income, fixed, variable, net, save_rate"""
+    """某年逐月損益。columns: month, income, fixed, variable, expense, net, save_rate"""
     sub = df[df["month"].str.startswith(year)]
     rows = []
     for m in sorted(sub["month"].unique()):
         p = pnl(sub, fixed_cats, month=m)
         rows.append({"month": m, "income": p["income"], "fixed": p["fixed"],
-                     "variable": p["variable"], "net": p["net"],
-                     "save_rate": p["save_rate"]})
-    return pd.DataFrame(rows, columns=["month", "income", "fixed",
-                                       "variable", "net", "save_rate"])
+                     "variable": p["variable"], "expense": p["expense"],
+                     "net": p["net"], "save_rate": p["save_rate"]})
+    return pd.DataFrame(rows, columns=["month", "income", "fixed", "variable",
+                                       "expense", "net", "save_rate"])
 
 
 def settlement(df: pd.DataFrame, people: list[dict],

@@ -3,7 +3,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from lib import analytics
-from ui._shared import EXPENSE_C, INCOME_C, NET_C, S, empty_hint, load, person_view
+from ui._shared import (EXPENSE_C, INCOME_C, NET_C, S, chart, empty_hint, load,
+                        person_view)
 
 st.title("📈 收支趨勢")
 
@@ -15,7 +16,8 @@ if ctx:
         cn = analytics.cumulative_net(sub)
 
         latest = cn.iloc[-1]
-        c1, c2, c3 = st.columns(3)
+        with st.container(key="kpis_tr"):
+            c1, c2, c3 = st.columns(3)
         c1.metric("累積淨存", f"{S}{latest['cum_net']:,.0f}")
         c2.metric("本月儲蓄率",
                   "—" if latest["save_rate"] != latest["save_rate"]  # NaN
@@ -35,7 +37,7 @@ if ctx:
             fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
                               yaxis_title=f"{S}",
                               xaxis=dict(type="category"))
-            st.plotly_chart(fig, width="stretch")
+            chart(fig)
 
         col_l, col_r = st.columns(2)
         with col_l, st.container(border=True, key="card_sr"):
@@ -54,7 +56,7 @@ if ctx:
                 fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
                                   yaxis_tickformat=".0%",
                                   xaxis=dict(type="category"))
-                st.plotly_chart(fig, width="stretch")
+                chart(fig)
         with col_r, st.container(border=True, key="card_wd"):
             st.markdown('<div class="card-title">📅 星期幾最會花錢</div>',
                         unsafe_allow_html=True)
@@ -69,4 +71,4 @@ if ctx:
                                            "CA$%{y:,.2f}<extra></extra>"))
                 fig.update_layout(margin=dict(l=20, r=20, t=10, b=20), height=300,
                                   yaxis_title=f"支出（{S}）")
-                st.plotly_chart(fig, width="stretch")
+                chart(fig)

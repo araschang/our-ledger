@@ -42,7 +42,13 @@ if ctx:
                     f'{"+" if d > 0 else "−"}{abs(d):,.0f} vs 上月</span>')
 
         # ---- 指標列 ------------------------------------------------------
-        c1, c2, c3 = st.columns(3)
+        with st.container(key="kpis"):
+            c0, c1 = st.columns(2)
+            c2, c3 = st.columns(2)
+        c0.metric("總支出", f"CA${p['expense']:,.0f}",
+                  help="固定支出 ＋ 變動支出",
+                  delta=(f"{p['expense'] - prev['expense']:+,.0f}" if prev else None),
+                  delta_color="inverse")
         c1.metric("淨存", f"CA${p['net']:,.0f}",
                   delta=(f"{p['net'] - prev['net']:+,.0f}" if prev else None))
         c2.metric("儲蓄率",
@@ -61,9 +67,10 @@ if ctx:
             st.markdown(f'<div class="card-title">{int(month[5:7])}月損益表</div>',
                         unsafe_allow_html=True)
 
-            def sec(label, amount, dl="", sign=""):
-                """小計列（收入/固定支出/變動支出）。"""
-                st.markdown(f'<div class="pl-sec"><span>{label}</span>'
+            def sec(label, amount, dl="", sign="", sub_label=""):
+                """小計列（收入/固定支出/變動支出/總支出）。"""
+                note = f' <span class="card-sub">{sub_label}</span>' if sub_label else ""
+                st.markdown(f'<div class="pl-sec"><span>{label}{note}</span>'
                             f'<span class="pl-amt">{sign}{fmt(abs(amount))} '
                             f'{dl}</span></div>', unsafe_allow_html=True)
 
@@ -100,6 +107,9 @@ if ctx:
                 delta(p["variable"], prev["variable"] if prev else None,
                       invert=True), sign="−")
             subs(p["variable_by"], "var", "expense")
+            sec("總支出", p["expense"],
+                delta(p["expense"], prev["expense"] if prev else None, invert=True),
+                sign="−", sub_label="固定＋變動")
             sr = ("" if p["save_rate"] is None
                   else f'　<span class="card-sub">儲蓄率 {p["save_rate"]:.0%}</span>')
             tot(f"淨存{sr}", p["net"])
@@ -122,18 +132,21 @@ if ctx:
                          f'<td class="amt">{fmt(r.income)}</td>'
                          f'<td class="amt">{fmt(r.fixed)}</td>'
                          f'<td class="amt">{fmt(r.variable)}</td>'
+                         f'<td class="amt"><b>{fmt(r.expense)}</b></td>'
                          f'<td class="amt" style="color:{net_color}">{fmt(r.net)}</td>'
                          f'<td class="mut">{sr_txt}</td></tr>')
-            ti, tf, tv, tn = (ydf["income"].sum(), ydf["fixed"].sum(),
-                              ydf["variable"].sum(), ydf["net"].sum())
+            ti, tf, tv, te, tn = (ydf["income"].sum(), ydf["fixed"].sum(),
+                                  ydf["variable"].sum(), ydf["expense"].sum(),
+                                  ydf["net"].sum())
             tsr = "—" if ti <= 0 else f"{tn / ti:.0%}"
             body += (f'<tr class="tot"><td>合計</td>'
                      f'<td class="amt">{fmt(ti)}</td><td class="amt">{fmt(tf)}</td>'
-                     f'<td class="amt">{fmt(tv)}</td><td class="amt">{fmt(tn)}</td>'
+                     f'<td class="amt">{fmt(tv)}</td><td class="amt">{fmt(te)}</td>'
+                     f'<td class="amt">{fmt(tn)}</td>'
                      f'<td class="mut">{tsr}</td></tr>')
             st.markdown('<div class="tbl-scroll"><table class="dt"><thead><tr>'
                         '<th>月份</th><th>收入</th>'
-                        '<th>固定支出</th><th>變動支出</th><th>淨存</th>'
+                        '<th>固定支出</th><th>變動支出</th><th>總支出</th><th>淨存</th>'
                         '<th>儲蓄率</th></tr></thead>'
                         f'<tbody>{body}</tbody></table></div>',
                         unsafe_allow_html=True)

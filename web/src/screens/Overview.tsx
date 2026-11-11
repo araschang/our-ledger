@@ -27,11 +27,11 @@ export function Overview({ month, setMonth, range, onEdit, trailing }: {
   const [allBudgets, setAllBudgets] = useState(false);
   const [allCats, setAllCats] = useState(false);
 
-  const sMonth = A.settlement(rows, meta.people, month);
   const sAll = A.settlement(rows, meta.people);
-  const mRows = rows.filter((r) => r.month === month);
-  const joint = sMonth.total + sMonth.advance_total;
-  const jointN = mRows.filter((r) => r.type === "expense" && (r.split === "half" || r.split === "advance")).length;
+  const mRows = rows.filter((r) => r.month === month && A.isPL(r));
+  const jointRows = mRows.filter((r) => r.type === "expense" && (r.split === "half" || r.split === "advance"));
+  const joint = jointRows.reduce((s, r) => s + r.amount, 0);
+  const jointN = jointRows.length;
   const spent = mRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
   const income = mRows.filter((r) => r.type === "income").reduce((s, r) => s + r.amount, 0);
   const breakdown = A.categoryBreakdown(rows, month);
@@ -46,7 +46,7 @@ export function Overview({ month, setMonth, range, onEdit, trailing }: {
   const totalB = brows.reduce((s, r) => s + r.b, 0);
   const usedB = brows.reduce((s, r) => s + r.sp, 0);
   const pace = month === today.slice(0, 7) ? Number(today.slice(8, 10)) / daysInMonth(month) : null;
-  const paid = meta.people.map((p) => sMonth.paid[p.id] ?? 0);
+  const paid = meta.people.map((p) => jointRows.filter((r) => r.person === p.id).reduce((s, r) => s + r.amount, 0));
   const paidSum = paid.reduce((a, b) => a + b, 0);
 
   return (

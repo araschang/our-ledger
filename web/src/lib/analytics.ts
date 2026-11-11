@@ -8,6 +8,14 @@
 import type { Data, Meta, Person, Row, Txn } from "./types";
 
 const SPLITS = new Set(["half", "own", "advance"]);
+
+/**
+ * 「不算收支」：押金、幫朋友先墊、朋友還錢這種錢只是進出，不是花掉也不是賺到。
+ * 收支、預算、損益、分類統計都不算它；分帳（誰欠誰）照算（看 split）。
+ */
+export const NON_PL = "不算收支";
+export const isPL = (r: { category: string }) => r.category !== NON_PL;
+const pl = (rows: Row[]) => rows.filter(isPL);
 export const DEFAULT_FIXED = ["居住", "水電網路", "訂閱", "車貸保險"];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -100,7 +108,8 @@ export interface MonthSum {
 }
 
 /** 每月收入/支出/淨存（有任何一列的月份都算，舊到新），取最後 lastN 個月。 */
-export function monthlySummary(rows: Row[], lastN = 12): MonthSum[] {
+export function monthlySummary(allRows: Row[], lastN = 12): MonthSum[] {
+  const rows = pl(allRows);
   const months = uniqSorted(rows.map((r) => r.month));
   const inc = sumBy(rows.filter((r) => r.type === "income"), (r) => r.month);
   const exp = sumBy(rows.filter((r) => r.type === "expense"), (r) => r.month);
@@ -119,7 +128,7 @@ export interface CatAmount {
 
 export function categoryBreakdown(rows: Row[], month: string | null = null,
   type = "expense"): CatAmount[] {
-  const sub = rows.filter((r) => r.type === type && (!month || r.month === month));
+  const sub = pl(rows).filter((r) => r.type === type && (!month || r.month === month));
   return sortedDesc(sumBy(sub, (r) => r.category)).map(([category, amount]) => ({ category, amount }));
 }
 
@@ -131,7 +140,7 @@ export interface MonthCat {
 
 /** 逐月×分類（最近 lastN 個「有這種帳」的月份）。 */
 export function categoryMonthly(rows: Row[], type = "expense", lastN = 6): MonthCat[] {
-  const sub = rows.filter((r) => r.type === type);
+  const sub = pl(rows).filter((r) => r.type === type);
   const months = uniqSorted(sub.map((r) => r.month)).slice(-lastN);
   const keep = new Set(months);
   const m = sumBy(sub.filter((r) => keep.has(r.month)), (r) => `${r.month}\u0000${r.category}`);
@@ -151,7 +160,7 @@ export interface PersonCat {
 
 /** 分類×人：每人算自己實際負擔的部分（平分各一半、代墊歸被墊的人）。 */
 export function personCategory(rows: Row[], ids: string[], month: string | null = null): PersonCat[] {
-  const sub = rows.filter((r) => r.type === "expense" && (!month || r.month === month));
+  const sub = pl(rows).filter((r) => r.type === "expense" && (!month || r.month === month));
   const out: PersonCat[] = [];
   for (const pid of ids) {
     const mine = personalView(sub, pid, ids);
@@ -184,7 +193,7 @@ export function weekdayOf(date: string): number {
 }
 
 export function weekdayPattern(rows: Row[]): { weekday: number; label: string; amount: number }[] {
-  const sub = rows.filter((r) => r.type === "expense");
+  const sub = pl(rows).filter((r) => r.type === "expense");
   if (sub.length === 0) return [];
   const sums = new Array(7).fill(0);
   for (const r of sub) sums[weekdayOf(r.date)] += r.amount;
@@ -192,7 +201,7 @@ export function weekdayPattern(rows: Row[]): { weekday: number; label: string; a
 }
 
 export function topExpenses(rows: Row[], n = 10, month: string | null = null): Row[] {
-  return rows
+  return pl(rows)
     .filter((r) => r.type === "expense" && (!month || r.month === month))
     .sort((a, b) => b.amount - a.amount || b.date.localeCompare(a.date))
     .slice(0, n);
@@ -213,7 +222,8 @@ export interface Pnl {
 }
 
 /** 個人損益表：收入 → 固定支出 → 可支配餘裕 → 變動支出 → 淨存。 */
-export function pnl(rows: Row[], fixed: string[], month: string | null = null): Pnl {
+export function pnl(allRows: Row[], fixed: string[], month: string | null = null): Pnl {
+  const rows = pl(allRows);
   const sub = month ? rows.filter((r) => r.month === month) : rows;
   const fx = new Set(fixed);
   const inc = sub.filter((r) => r.type === "income");
@@ -241,7 +251,7 @@ export function pnl(rows: Row[], fixed: string[], month: string | null = null): 
 }
 
 export function pnlYearly(rows: Row[], fixed: string[], year: string) {
-  const sub = rows.filter((r) => r.month.startsWith(year));
+  const sub = pl(rows).filter((r) => r.month.startsWith(year));
   return uniqSorted(sub.map((r) => r.month)).map((month) => {
     const p = pnl(sub, fixed, month);
     return { month, income: p.income, fixed: p.fixed, variable: p.variable,
@@ -352,7 +362,7 @@ export interface PnlCompare {
 export function pnlCompare(rows: Row[], fixed: string[], month: string, today: string): PnlCompare {
   const cur = pnl(rows, fixed, month);
   const pm = prevMonth(month);
-  if (!rows.some((r) => r.month === pm)) return { cur, curCmp: cur, prev: null, label: "" };
+  if (!rows.some((r) => r.month === pm && isPL(r))) return { cur, curCmp: cur, prev: null, label: "" };
   if (month === today.slice(0, 7)) {
     const day = Number(today.slice(8, 10));
     const upTo = (m: string) => rows.filter((r) => r.month === m && Number(r.date.slice(8, 10)) <= day);

@@ -60,7 +60,8 @@ export function TxnRow({ txn, meta, amount, onTap, onDelete, pending = false, fl
     };
   }, [txn.id]);
 
-  const isIncome = txn.type === "income";
+  const nonPL = txn.category === "不算收支";
+  const isIncome = txn.type === "income" && !nonPL;
   const isSettle = txn.type === "settle";
   const value = amount ?? txn.amount;
   const other = meta.people.find((p) => p.id !== txn.person)?.id ?? "";
@@ -68,7 +69,8 @@ export function TxnRow({ txn, meta, amount, onTap, onDelete, pending = false, fl
   const sub = [
     nameOf(meta, txn.person),
     isSettle ? "結清" : txn.item ? txn.category : null,
-    isIncome ? "收入" : isSettle ? null : SPLIT_LABEL[txn.split] ?? txn.split,
+    isIncome ? "收入" : isSettle ? null : nonPL ? (txn.type === "income" ? "收進來" : txn.split === "own" ? null : SPLIT_LABEL[txn.split])
+      : SPLIT_LABEL[txn.split] ?? txn.split,
     showDate,
   ].filter(Boolean).join(" · ");
 
@@ -174,14 +176,14 @@ export function TxnRow({ txn, meta, amount, onTap, onDelete, pending = false, fl
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end">
-          <div className={cx("rounded-num tnum text-[17px] leading-[22px] font-medium", isIncome && "text-money-in", isSettle && "text-label-2")}>
+          <div className={cx("rounded-num tnum text-[17px] leading-[22px] font-medium", isIncome && "text-money-in", (isSettle || nonPL) && "text-label-2")}>
             {isIncome ? "+" : ""}{money(value)}
           </div>
           {pending ? (
             <div className="mt-px flex items-center gap-1 text-[12px] text-orange">
               <Icon name="clock" size={11} strokeWidth={2.4} />待上傳
             </div>
-          ) : amount === undefined && txn.split === "half" && txn.type === "expense" ? (
+          ) : amount === undefined && txn.split === "half" && txn.type === "expense" && !nonPL ? (
             <div className="rounded-num tnum mt-px text-[12px] text-label-2">各 {money(value / 2)}</div>
           ) : null}
         </div>

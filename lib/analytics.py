@@ -5,6 +5,16 @@ COLUMNS = ["id", "created_at", "date", "person", "type", "category",
            "item", "amount", "note", "location", "shared", "source", "currency",
            "split"]
 
+# 「不算收支」：押金、幫朋友先墊、朋友還錢這種錢只是進出，不是花掉也不是賺到。
+# 收支、預算、損益、分類統計都不算它；分帳（誰欠誰）照算（看 split）。
+NON_PL = "不算收支"
+
+
+def pl(df: pd.DataFrame) -> pd.DataFrame:
+    """只留算收支的列（拿掉「不算收支」）。"""
+    return df[df["category"] != NON_PL] if len(df) else df
+
+
 # split：這筆帳怎麼算
 #   half    = 兩人對半（舊資料 shared=TRUE）
 #   own     = 付的人自己的（舊資料 shared=FALSE）
@@ -81,6 +91,7 @@ def personal_view(df: pd.DataFrame, person: str | None,
 
 def monthly_summary(df: pd.DataFrame, last_n: int = 12) -> pd.DataFrame:
     """每月收入/支出/淨存。回傳 columns: month, income, expense, net。"""
+    df = pl(df)
     if df.empty:
         return pd.DataFrame(columns=["month", "income", "expense", "net"])
     g = df.groupby(["month", "type"])["amount"].sum().unstack(fill_value=0.0)
@@ -95,6 +106,7 @@ def monthly_summary(df: pd.DataFrame, last_n: int = 12) -> pd.DataFrame:
 def category_breakdown(df: pd.DataFrame, month: str | None = None,
                        txn_type: str = "expense") -> pd.DataFrame:
     """某月（或全部）依分類加總。回傳 columns: category, amount，由大到小。"""
+    df = pl(df)
     sub = df[df["type"] == txn_type]
     if month:
         sub = sub[sub["month"] == month]
@@ -108,6 +120,7 @@ def category_breakdown(df: pd.DataFrame, month: str | None = None,
 def category_monthly(df: pd.DataFrame, txn_type: str = "expense",
                      last_n: int = 6) -> pd.DataFrame:
     """逐月×分類金額（long form: month, category, amount），取最近 last_n 個月。"""
+    df = pl(df)
     sub = df[df["type"] == txn_type]
     if sub.empty:
         return pd.DataFrame(columns=["month", "category", "amount"])
@@ -123,6 +136,7 @@ def person_category(df: pd.DataFrame, ids: list[str],
 
     每個人算的是自己實際負擔的部分：平分各一半、代墊歸被墊的那個人。
     """
+    df = pl(df)
     sub = df[df["type"] == "expense"]
     if month:
         sub = sub[sub["month"] == month]
@@ -153,6 +167,7 @@ def cumulative_net(df: pd.DataFrame) -> pd.DataFrame:
 
 def weekday_pattern(df: pd.DataFrame) -> pd.DataFrame:
     """星期幾花錢（支出總額）。columns: weekday(0=一), label, amount"""
+    df = pl(df)
     sub = df[df["type"] == "expense"]
     if sub.empty:
         return pd.DataFrame(columns=["weekday", "label", "amount"])
@@ -167,6 +182,7 @@ def weekday_pattern(df: pd.DataFrame) -> pd.DataFrame:
 def top_expenses(df: pd.DataFrame, n: int = 10,
                  month: str | None = None) -> pd.DataFrame:
     """大額支出 Top N。"""
+    df = pl(df)
     sub = df[df["type"] == "expense"]
     if month:
         sub = sub[sub["month"] == month]
@@ -181,6 +197,7 @@ def pnl(df: pd.DataFrame, fixed_cats: list[str],
           'save_rate', 'fixed_ratio',
           'income_by', 'fixed_by', 'variable_by'}（*_by = {分類: 金額} 由大到小）
     """
+    df = pl(df)
     sub = df[df["month"] == month] if month else df
     inc = sub[sub["type"] == "income"]
     exp = sub[sub["type"] == "expense"]
@@ -211,6 +228,7 @@ def pnl(df: pd.DataFrame, fixed_cats: list[str],
 def pnl_yearly(df: pd.DataFrame, fixed_cats: list[str],
                year: str) -> pd.DataFrame:
     """某年逐月損益。columns: month, income, fixed, variable, expense, net, save_rate"""
+    df = pl(df)
     sub = df[df["month"].str.startswith(year)]
     rows = []
     for m in sorted(sub["month"].unique()):

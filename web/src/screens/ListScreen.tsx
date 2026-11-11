@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
 import { ROW_INSET, TxnRow } from "../components/TxnRow";
 import { CatIcon, Empty, Group, MonthRow, Screen, SearchField, Segmented, Sheet, toast } from "../components/ui";
-import { normalizeMeta } from "../lib/analytics";
+import { NON_PL, normalizeMeta } from "../lib/analytics";
 import { dayHeading, money, monthTitle, todayLocal } from "../lib/format";
 import { store, useStore } from "../lib/store";
 import type { Txn } from "../lib/types";
@@ -28,6 +28,7 @@ export function ListScreen({ month, setMonth, range, onEdit, flashId, trailing }
   const [query, setQuery] = useState("");
 
   const cad = (t: Txn) => t.amount * (rates[t.currency] ?? 1);
+  const counts = (t: Txn) => t.category !== NON_PL; // 押金、代墊朋友這種不算進收支
   const q = query.trim().toLowerCase();
 
   const rows = useMemo(() => data.transactions
@@ -46,14 +47,14 @@ export function ListScreen({ month, setMonth, range, onEdit, flashId, trailing }
         out.push(g);
       }
       g.items.push(t);
-      if (t.type === "expense") g.total += cad(t);
+      if (t.type === "expense" && counts(t)) g.total += cad(t);
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, q, today]);
 
-  const expense = rows.filter((t) => t.type === "expense").reduce((s, t) => s + cad(t), 0);
-  const income = rows.filter((t) => t.type === "income").reduce((s, t) => s + cad(t), 0);
+  const expense = rows.filter((t) => t.type === "expense" && counts(t)).reduce((s, t) => s + cad(t), 0);
+  const income = rows.filter((t) => t.type === "income" && counts(t)).reduce((s, t) => s + cad(t), 0);
 
   useEffect(() => {
     if (!flashId) return;

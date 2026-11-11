@@ -23,6 +23,11 @@ const CAT: Record<string, { icon: IconName; color: string }> = {
   獎金: { icon: "gift", color: "orange" },
   投資: { icon: "trend", color: "teal" },
   結清: { icon: "swap", color: "gray" },
+  // 2026-11 精簡後的新分類
+  家用: { icon: "box", color: "teal" },
+  美容服飾: { icon: "sparkles", color: "pink" },
+  旅行: { icon: "plane", color: "yellow" },
+  不算收支: { icon: "ban", color: "gray" },
 };
 const SPARE = ["orange", "green", "blue", "teal", "indigo", "purple", "pink", "mint", "cyan", "brown", "yellow", "red"];
 

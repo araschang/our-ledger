@@ -144,3 +144,24 @@ test("MTD comparison uses the same days of last month", () => {
   const full = A.pnlCompare(rows, [], "2026-11", "2026-12-02");
   expect(full.prev?.expense).toBe(110);
 });
+
+test("不算收支：收支和損益不算，分帳照算", () => {
+  const mk = (id: string, person: string, type: string, category: string, amount: number, split: string) => ({
+    id, created_at: "", date: "2026-11-05", person, type, category, item: "", amount, note: "", source: "",
+    currency: "CAD", split });
+  const data: Data = {
+    meta: A.emptyMeta(), rates: { CAD: 1 },
+    transactions: [
+      mk("p1", "aras", "expense", "外食", 40, "half"),
+      mk("n1", "aras", "expense", "不算收支", 100, "advance"), // Aras 幫 Diana 墊（例如朋友的錢）
+      mk("n2", "diana", "income", "不算收支", 1750, "own"), // 退押金
+    ],
+  };
+  const rows = A.rowsOf(data);
+  expect(A.pnl(rows, [], "2026-11").expense).toBe(40);
+  expect(A.pnl(rows, [], "2026-11").income).toBe(0);
+  expect(A.monthlySummary(rows)[0]).toMatchObject({ income: 0, expense: 40 });
+  expect(A.categoryBreakdown(rows, "2026-11").map((c) => c.category)).toEqual(["外食"]);
+  // 分帳：外食平分 Aras +20；代墊 100 → Aras +100
+  expect(A.settlement(rows, A.emptyMeta().people).balance).toEqual({ diana: -120, aras: 120 });
+});

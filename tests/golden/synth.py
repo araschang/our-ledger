@@ -43,8 +43,14 @@ for mi, ym in enumerate(months):
         add(f"{ym}-27", rnd.choice(["diana", "aras"]), "settle", "結清",
             round(rnd.uniform(50, 900), 2), item="結清")
 add("2026-11-10", "diana", "expense", "外食", 0.0, "half")     # 金額 0 的舊資料
+# 不算收支：押金（自己）、幫對方墊的移轉（代墊，分帳要算）、退押金（收入）、只有不算收支的月份
+add("2025-09-03", "diana", "expense", "不算收支", 1150.0, "own", item="押金")
+add("2025-10-08", "aras", "expense", "不算收支", 161.64, "advance", item="幫大家付")
+add("2025-10-20", "diana", "income", "不算收支", 161.64, item="朋友還錢")
+add("2026-02-14", "diana", "income", "不算收支", 1751.86, item="退押金")
+add("2026-12-01", "aras", "expense", "不算收支", 300.0, "half", item="只有這筆的月份")
 meta = {"people": people,
-        "categories": {"expense": exp_cats + ["醫療"], "income": ["薪資", "獎金", "其他"]},
+        "categories": {"expense": exp_cats + ["醫療", "不算收支"], "income": ["薪資", "獎金", "其他", "不算收支"]},
         "budgets": {"外食": 400, "買菜": 300}, "fixed_categories": ["居住", "水電網路", "車貸保險"]}
 json.dump({"transactions": txns, "meta": meta, "rates": {"CAD": 1.0, "USD": 1.37, "TWD": 0.043}},
           open(sys.argv[1], "w"), ensure_ascii=False, indent=0)

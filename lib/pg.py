@@ -117,6 +117,10 @@ def now_local() -> datetime:
     return datetime.now(TZ).replace(tzinfo=None, microsecond=0)
 
 
+def _text(v) -> str:
+    return str(v or "").replace("\x00", "")  # Postgres 的 text 不能有 NUL
+
+
 def normalize(t: dict, *, new: bool) -> dict:
     """前端/捷徑送來的 txn → 一列。new=True 時補 id/created_at/date（同 Code.gs 的 add）。"""
     created = _ts(t.get("created_at"))
@@ -126,14 +130,14 @@ def normalize(t: dict, *, new: bool) -> dict:
         "id": str(t.get("id") or (uuid.uuid4().hex[:8] if new else "")),
         "created_at": created,
         "date": _date(t.get("date"), created),
-        "person": str(t.get("person") or ""),
+        "person": _text(t.get("person")),
         "type": str(t.get("type") or "expense"),
-        "category": str(t.get("category") or "other"),
-        "item": str(t.get("item") or ""),
+        "category": _text(t.get("category")) or "other",
+        "item": _text(t.get("item")),
         "amount": _amount(t.get("amount")),
-        "note": str(t.get("note") or ""),
-        "location": str(t.get("location") or ""),
-        "source": str(t.get("source") or ""),
+        "note": _text(t.get("note")),
+        "location": _text(t.get("location")),
+        "source": _text(t.get("source")),
         "currency": str(t.get("currency") or "CAD").upper(),
         "split": split_of(t),
     }
@@ -169,12 +173,17 @@ class PgClient:
         return conn
 
     def _tx(self, fn):
-        """在一個交易裡執行 fn(conn) 並回傳它的結果；資料庫錯誤一律轉成 ApiError。"""
+        """在一個交易裡執行 fn(conn) 並回傳它的結果；資料庫錯誤轉成 ApiError。
+
+        資料本身有問題（格式、違反限制）→ 400（重送也沒用）；連線之類的 → 503（等一下再試）。
+        """
         try:
             with self._conn() as conn:
                 return fn(conn)
+        except (psycopg.DataError, psycopg.IntegrityError) as e:
+            raise ApiError(f"資料格式不對：{e}", status=400) from e
         except psycopg.Error as e:
-            raise ApiError(f"資料庫錯誤：{e}") from e
+            raise ApiError(f"資料庫錯誤：{e}", status=503) from e
 
     def _run(self, fn) -> dict:
         """舊協定：執行 fn(conn) 後回最新全量（同 Code.gs 每個 POST 的回應）。"""
@@ -261,7 +270,7 @@ class PgClient:
                 "created_at = COALESCE(%(created_at)s, created_at) WHERE id = %(id)s "
                 "RETURNING *", row).fetchone()
             if not got:
-                raise ApiError(f"找不到這筆（id {row['id']}），可能已經被刪掉了")
+                raise ApiError(f"找不到這筆（id {row['id']}），可能已經被刪掉了", status=404)
             return _out(got)
         return self._tx(fn)
 

@@ -339,7 +339,8 @@ export function daysInMonth(month: string): number {
 }
 
 export interface PnlCompare {
-  cur: Pnl;
+  cur: Pnl; // 顯示用：這個月全部（含先記好的未來日期）
+  curCmp: Pnl; // 比較用：跟 prev 同一段日期
   prev: Pnl | null;
   label: string; // 「比上月同期」或「比上月」
 }
@@ -351,13 +352,14 @@ export interface PnlCompare {
 export function pnlCompare(rows: Row[], fixed: string[], month: string, today: string): PnlCompare {
   const cur = pnl(rows, fixed, month);
   const pm = prevMonth(month);
-  if (!rows.some((r) => r.month === pm)) return { cur, prev: null, label: "" };
+  if (!rows.some((r) => r.month === pm)) return { cur, curCmp: cur, prev: null, label: "" };
   if (month === today.slice(0, 7)) {
     const day = Number(today.slice(8, 10));
-    const prevRows = rows.filter((r) => r.month === pm && Number(r.date.slice(8, 10)) <= day);
-    return { cur, prev: pnl(prevRows, fixed, pm), label: `比上月同期（1–${day} 號）` };
+    const upTo = (m: string) => rows.filter((r) => r.month === m && Number(r.date.slice(8, 10)) <= day);
+    return { cur, curCmp: pnl(upTo(month), fixed, month), prev: pnl(upTo(pm), fixed, pm),
+      label: `比上月同期（1–${day} 號）` };
   }
-  return { cur, prev: pnl(rows, fixed, pm), label: "比上月" };
+  return { cur, curCmp: cur, prev: pnl(rows, fixed, pm), label: "比上月" };
 }
 
 export function emptyMeta(): Meta {

@@ -33,14 +33,22 @@ self.addEventListener("fetch", (e) => {
   if (req.mode === "navigate") {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
+      // 只把真的 app 頁面（HTML、200）存成離線用的那份；/healthz 之類的不存
+      const net = fetch(req).then(async (res) => {
+        if (res.ok && (res.headers.get("content-type") || "").includes("text/html")) {
+          await cache.put("/", res.clone());
+        }
+        return res;
+      });
       try {
         const res = await Promise.race([
-          fetch(req),
+          net,
           new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 3000)),
         ]);
-        if (res.ok) await cache.put("/", res.clone());
-        return res;
+        if (res.ok) return res;
+        return (await cache.match("/")) || res; // 伺服器出錯（5xx）：先用手機上的 app
       } catch {
+        e.waitUntil(net.catch(() => {})); // 網路慢：先開舊的，晚到的新版照樣存起來，下次就是新的
         return (await cache.match("/")) || Response.error();
       }
     })());
@@ -53,7 +61,8 @@ self.addEventListener("fetch", (e) => {
       const hit = await cache.match(req);
       if (hit) return hit;
       const res = await fetch(req);
-      if (res.ok) {
+      // 只存真的 JS/CSS（找不到時伺服器回 404；萬一回 HTML 也不存，免得 app 變空白）
+      if (res.ok && !(res.headers.get("content-type") || "").includes("text/html")) {
         await cache.put(req, res.clone());
         trim(cache);
       }

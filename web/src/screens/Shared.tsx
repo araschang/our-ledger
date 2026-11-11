@@ -87,7 +87,7 @@ export function SettleSheet({ open, onClose, s }: { open: boolean; onClose: () =
           onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ""))}
           className="tnum min-w-0 flex-1 bg-transparent text-[18px] font-semibold outline-none placeholder:text-ink" />
       </div>
-      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註（例：e-Transfer）"
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註（例：e-Transfer）" maxLength={900}
         className="mt-2 h-11 w-full rounded-xl bg-card-2 px-3 text-[16px] outline-none placeholder:text-muted" />
     </Sheet>
   );

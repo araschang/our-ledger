@@ -4,6 +4,7 @@
 （原幣和匯率寫進備註），之後報表不會跟著每天的匯率變動。
 """
 import json
+import re
 import threading
 import time
 import urllib.request
@@ -33,9 +34,10 @@ def rates() -> dict:
             got = _fetch()
             _cache.update(at=time.time(), rates={**FALLBACK_RATES, **got}, source="live")
         except Exception:  # noqa: BLE001 — 匯率抓不到不能讓記帳失敗
-            if not _cache["rates"]:
-                _cache.update(at=time.time() - TTL + 600, rates=dict(FALLBACK_RATES),
-                              source="fallback")  # 10 分鐘後再試
+            # 沿用上次的（沒有就用保底值），10 分鐘後再試
+            _cache.update(at=time.time() - TTL + 600,
+                          rates=_cache["rates"] or dict(FALLBACK_RATES),
+                          source=_cache["source"] if _cache["rates"] else "fallback")
         return dict(_cache["rates"])
 
 
@@ -58,7 +60,8 @@ def lock_to_cad(row: dict, rate_table: dict | None = None) -> dict:
     if rate <= 0:
         raise ValueError(f"不支援的幣別：{cur}")
     orig = f"原幣 {sym(cur)}{float(row['amount']):,.2f} @{rate:.4f}"
-    note = (row.get("note") or "").strip()
+    # 已經換算過的帳又改成外幣：換掉舊的「原幣…」前綴，不要疊兩個
+    note = re.sub(r"^原幣 [^｜]*(｜|$)", "", (row.get("note") or "").strip()).strip()
     row["note"] = f"{orig}｜{note}" if note else orig
     row["amount"] = round(float(row["amount"]) * rate, 2)
     row["currency"] = "CAD"

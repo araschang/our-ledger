@@ -131,12 +131,14 @@ export function Entry({ target, onClose, onSaved }: {
       date, person, type, category: isSettle ? "結清" : category!, item: item.trim(),
       amount: Math.round(amount * 100) / 100, note: note.trim(), currency,
       split: type === "expense" ? split : "own", source: editing?.source ?? "app",
+      location: editing?.location ?? "",
     };
     const label = `${isSettle ? "結清" : item.trim() || category} ${money(amount * rate)}`;
     if (editing) {
       const before: TxnInput = { date: editing.date, person: editing.person, type: editing.type,
         category: editing.category, item: editing.item, amount: editing.amount, note: editing.note,
-        currency: editing.currency, split: editing.split, source: editing.source };
+        currency: editing.currency, split: editing.split, source: editing.source,
+        location: editing.location ?? "" };
       store.update(editing.id, payload);
       toast(`改好了：${label}`, { action: { label: "復原", fn: () => store.update(editing.id, before) } });
       onSaved(editing.id);
@@ -264,7 +266,7 @@ export function Entry({ target, onClose, onSaved }: {
           <div className="mt-3 flex items-center gap-2">
             <input ref={itemRef} value={item} onChange={(e) => setItem(e.target.value)}
               onFocus={() => setTyping(true)} onBlur={() => setTimeout(() => setTyping(false), 80)}
-              placeholder={isSettle ? "說明（可不填）" : "品項（可不填）"} enterKeyHint="done"
+              placeholder={isSettle ? "說明（可不填）" : "品項（可不填）"} enterKeyHint="done" maxLength={200}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
               className="h-11 min-w-0 flex-1 rounded-xl bg-card px-3.5 text-[16px] shadow-[var(--shadow)] outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--link)]" />
             <button className={cx("press flex h-11 shrink-0 items-center gap-1 rounded-xl px-3 text-[14px]",
@@ -289,7 +291,7 @@ export function Entry({ target, onClose, onSaved }: {
             </div>
           )}
           {showNote && (
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註"
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註" maxLength={900}
               onFocus={() => setTyping(true)} onBlur={() => setTimeout(() => setTyping(false), 80)}
               enterKeyHint="done" onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
               className="mt-2 h-11 w-full rounded-xl bg-card px-3.5 text-[16px] shadow-[var(--shadow)] outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--link)]" />

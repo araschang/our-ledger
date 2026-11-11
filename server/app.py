@@ -56,7 +56,7 @@ async def guard(request: Request, call_next):
 
 @app.exception_handler(ApiError)
 async def api_error(_request: Request, e: ApiError):
-    status = 404 if "找不到" in str(e) else 503 if "資料庫" in str(e) else 400
+    status = getattr(e, "status", None) or (404 if "找不到" in str(e) else 400)
     return JSONResponse({"error": str(e)}, status_code=status)
 
 
@@ -88,7 +88,8 @@ def rates():
 
 
 class TxnIn(BaseModel):
-    id: str | None = Field(None, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
+    # 舊 Sheet 搬來的 id 有「7.3061e+89」這種：只擋會弄壞網址的字元
+    id: str | None = Field(None, max_length=64, pattern=r"^[^\s/\\?#%]+$")
     created_at: str | None = Field(None, max_length=40)
     date: str
     person: str = Field(min_length=1, max_length=40)
@@ -138,8 +139,14 @@ def add(body: TxnIn):
 
 @app.put("/api/transactions/{txn_id}")
 def update(txn_id: str, body: TxnIn):
-    body.id = txn_id
-    return {"txn": db().update_row(_row(body, new=False))}
+    """改一筆：網址上的 id 為準；沒送的欄位（例如 location）沿用原本的值。"""
+    old = db().get_row(txn_id)
+    if old is None:
+        raise ApiError(f"找不到這筆（id {txn_id}），可能已經被刪掉了", status=404)
+    sent = body.model_dump(exclude_unset=True)
+    merged = TxnIn.model_validate({**{k: old[k] for k in TxnIn.model_fields if k in old},
+                                   **sent, "id": txn_id, "created_at": old["created_at"]})
+    return {"txn": db().update_row(_row(merged, new=False))}
 
 
 @app.delete("/api/transactions/{txn_id}")
@@ -163,9 +170,18 @@ def put_meta(meta: dict = Body(...)):
         if not (isinstance(cats, dict) and isinstance(cats.get("expense"), list)
                 and isinstance(cats.get("income"), list) and cats["expense"]):
             raise ApiError("分類格式不對")
-    if "budgets" in meta and not all(
-            isinstance(v, (int, float)) and v >= 0 for v in meta["budgets"].values()):
+        if not all(isinstance(c, str) and c.strip() and len(c) <= 40
+                   for c in cats["expense"] + cats["income"]):
+            raise ApiError("分類名稱要是 1–40 個字")
+    if "budgets" in meta and not (
+            isinstance(meta["budgets"], dict)
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v < 1e9
+                    for v in meta["budgets"].values())):
         raise ApiError("預算要是 0 以上的數字")
+    if "fixed_categories" in meta and not (
+            isinstance(meta["fixed_categories"], list)
+            and all(isinstance(c, str) for c in meta["fixed_categories"])):
+        raise ApiError("固定支出格式不對")
     return {"meta": db().merge_meta(meta)}
 
 
@@ -184,6 +200,9 @@ def spa(path: str):
         cache = ("public, max-age=31536000, immutable" if path.startswith("assets/")
                  else "no-cache")
         return FileResponse(target, headers={"Cache-Control": cache})
+    if path.startswith("assets/") or "." in path.rsplit("/", 1)[-1]:
+        # 找不到的檔案就是 404：回 index.html 會被當成 JS 快取起來，app 變空白
+        return Response("not found", status_code=404, headers={"Cache-Control": "no-store"})
     index = root / "index.html"
     if not index.is_file():
         return Response("web/dist 還沒 build（cd web && bun run build）", status_code=503)

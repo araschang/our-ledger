@@ -5,7 +5,11 @@ TIMEOUT = 30
 
 
 class ApiError(Exception):
-    pass
+    """status：給新版後端用的 HTTP 狀態碼（None = 依訊息判斷，舊程式不用管）。"""
+
+    def __init__(self, msg: str = "", status: int | None = None):
+        super().__init__(msg)
+        self.status = status
 
 
 class GasClient:

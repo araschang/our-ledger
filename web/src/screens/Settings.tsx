@@ -235,9 +235,8 @@ export function Settings({ header }: { header: React.ReactNode }) {
             <SaveBar dirty={!sameMap(budgetNums, savedInList)}
               onReset={() => setBudgets(Object.fromEntries(meta.categories.expense.map((c) => [c, savedBudgets[c] ? String(savedBudgets[c]) : ""])))}
               onSave={() => {
-                // 不在支出分類裡、但以前設過的預算保留（分類改名時不會悄悄不見）
-                const keep = Object.fromEntries(Object.entries(savedBudgetNums).filter(([c]) => !meta.categories.expense.includes(c)));
-                store.saveMeta({ budgets: { ...keep, ...budgetNums } });
+                // 只存現在的支出分類（刪掉的分類，預算也一起清掉）
+                store.saveMeta({ budgets: budgetNums });
                 toast("預算存好了");
               }} />
           </Card>

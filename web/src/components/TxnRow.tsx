@@ -30,6 +30,7 @@ export function TxnRow({ txn, meta, amount, onTap, onDelete, pending = false, fl
   const g = useRef<{ x: number; y: number; dx0: number; w: number; lock: "h" | "v" | null } | null>(null);
   const moved = useRef(false);
   const fired = useRef(false);
+  const btnDown = useRef<{ x: number; y: number } | null>(null);
   const [rowW, setRowW] = useState(360);
   const full = rowW * 0.45; // 滑過這麼多直接刪（跟 iOS 郵件一樣），有「復原」可以救回
   const doDelete = () => {
@@ -64,9 +65,20 @@ export function TxnRow({ txn, meta, amount, onTap, onDelete, pending = false, fl
         <button
           className="absolute inset-y-0 right-0 flex items-center justify-center gap-1.5 bg-bad text-[14px] font-semibold text-white"
           style={{ width: Math.max(REVEAL, -dx), visibility: dx < 0 ? "visible" : "hidden" }}
-          // 放開手指就刪（不等 click：剛滑完緊接著點，有些瀏覽器會把那一下吃掉）
-          onPointerUp={doDelete}
-          onClick={doDelete}
+          // 點一下就刪（放開手指時判斷，不等 click：剛滑完緊接著點，有些瀏覽器會把那一下吃掉）；
+          // 手指有移動（例如從紅色區域往右滑想關起來）就不算
+          onPointerDown={(e) => {
+            btnDown.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerUp={(e) => {
+            const d = btnDown.current;
+            btnDown.current = null;
+            if (d && Math.abs(e.clientX - d.x) < 10 && Math.abs(e.clientY - d.y) < 10) doDelete();
+          }}
+          onPointerCancel={() => {
+            btnDown.current = null;
+          }}
+          onClick={(e) => e.detail === 0 && doDelete() /* 鍵盤 Enter/空白鍵 */}
           aria-label="刪除這筆"
           tabIndex={dx < 0 ? 0 : -1}
         >

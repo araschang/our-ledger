@@ -151,3 +151,58 @@ def test_legacy_shortcut_add_locks_usd(client):
                                  "amount": "5", "shared": "false", "currency": "USD"})
     row = [t for t in got["transactions"] if t["item"] == "x"][0]
     assert row["currency"] == "CAD" and row["amount"] == 7.0 and row["split"] == "own"
+
+
+# ---- review 2026-11-11 找到的問題 ---------------------------------------------
+
+def test_legacy_odd_id_can_be_edited_deleted_restored(client):
+    from lib.pg import PgClient
+    PgClient(DSN).add_txn({"id": "7.3061e+89", "person": "diana", "category": "交通", "item": "加油",
+                           "amount": 41.16, "shared": "true", "date": "2026-08-09"})
+    from urllib.parse import quote
+    url = f"/api/transactions/{quote('7.3061e+89', safe='')}"
+    r = client.put(url, json=txn(id="7.3061e+89", item="加油站", amount=41.16, person="diana",
+                                 category="交通", date="2026-08-09"), headers=H)
+    assert r.status_code == 200, r.text
+    old = r.json()["txn"]
+    assert old["item"] == "加油站"
+    assert client.delete(url, headers=H).json()["deleted"] is True
+    r = client.post("/api/transactions", json={**txn(item="加油站", amount=41.16, person="diana",
+                                                     category="交通", date="2026-08-09"),
+                                               "id": "7.3061e+89", "created_at": old["created_at"]},
+                    headers=H)
+    assert r.status_code == 200 and r.json()["txn"]["id"] == "7.3061e+89"
+
+
+def test_update_keeps_fields_not_sent(client):
+    from lib.pg import PgClient
+    PgClient(DSN).add_txn({"id": "loc1", "person": "aras", "category": "外食", "item": "x",
+                           "amount": 5, "location": "Richmond", "date": "2026-11-01"})
+    body = txn(item="y", amount=6)
+    body.pop("split")
+    got = client.put("/api/transactions/loc1", json=body, headers=H).json()["txn"]
+    assert got["location"] == "Richmond" and got["item"] == "y" and got["split"] == "own"
+
+
+def test_bad_text_is_400_not_503(client):
+    r = client.post("/api/transactions", json=txn(item="a\x00b"), headers=H)
+    assert r.status_code == 200 and r.json()["txn"]["item"] == "ab"  # NUL 直接拿掉
+    assert client.put("/api/meta", json={"budgets": [1, 2]}, headers=H).status_code == 400
+    assert client.put("/api/meta", json={"budgets": {"x": True}}, headers=H).status_code == 400
+    assert client.put("/api/meta", json={"categories": {"expense": [""], "income": []}},
+                      headers=H).status_code == 400
+
+
+def test_missing_asset_is_404(client):
+    r = client.get("/assets/old-build-123.js")
+    assert r.status_code == 404 and "immutable" not in r.headers.get("cache-control", "")
+    assert client.get("/favicon.ico").status_code == 404
+    assert client.get("/reports").status_code == 200  # 一般網址還是回 app
+
+
+def test_foreign_currency_prefix_not_doubled(client):
+    a = client.post("/api/transactions", json=txn(currency="USD", amount=10, note="tip"),
+                    headers=H).json()["txn"]
+    b = client.put(f"/api/transactions/{a['id']}", json=txn(currency="USD", amount=20, note=a["note"]),
+                   headers=H).json()["txn"]
+    assert b["note"] == "原幣 US$20.00 @1.4000｜tip" and b["amount"] == 28.0

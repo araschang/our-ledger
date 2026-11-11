@@ -4,6 +4,15 @@
  * 新增／修改／刪除先改手機上的畫面（立刻看到），同時排進「待上傳」佇列依序送出；
  * 沒網路就留著，連上網、回到 app、或每 15 秒自動重送。新增的 id 由手機產生，
  * 伺服器看到同一個 id 不會重複新增，所以重送不怕重複。
+ *
+ * 幾條保命規則（都有測試：tests/store.test.ts）：
+ * - 送出去過的動作（可能已經到伺服器、只是回應沒回來）不再跟後面的改動合併，
+ *   後面的改動另外排隊送，不然「新增後馬上改金額」的改動會不見。
+ * - 跟同一筆合併時找「最後一個」排隊的動作（刪 → 復原 → 再刪 才會是刪掉）。
+ * - 抓資料（GET）期間如果自己的改動送到了伺服器，那份回應可能比改動舊：丟掉、重抓。
+ * - 每送成功一個就把手機上的資料存起來（中途關 app 也不會少一筆）。
+ * - 只有伺服器明確說「這筆資料不對」才丟掉（400/409/413/422、修改時 404）；
+ *   其他錯誤（伺服器掛了、正在換版）都留著重送。
  */
 import { useSyncExternalStore } from "react";
 import { normalizeMeta } from "./analytics";
@@ -23,13 +32,14 @@ export interface TxnInput {
   currency: string;
   split: string;
   source?: string;
+  location?: string;
 }
 
 type Op =
-  | { op: "add"; id: string; txn: TxnInput }
-  | { op: "update"; id: string; txn: TxnInput }
-  | { op: "delete"; id: string }
-  | { op: "meta"; id: string; patch: Partial<Meta> };
+  | { op: "add"; id: string; txn: TxnInput; sent?: boolean; tries?: number }
+  | { op: "update"; id: string; txn: TxnInput; sent?: boolean; tries?: number }
+  | { op: "delete"; id: string; sent?: boolean; tries?: number }
+  | { op: "meta"; id: string; patch: Partial<Meta>; sent?: boolean; tries?: number };
 
 export interface Snapshot {
   data: Data | null; // 已套上待上傳的變更
@@ -42,7 +52,7 @@ export interface Snapshot {
   error: string | null; // 第一次載入失敗的原因
 }
 
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(public status: number, message: string) {
     super(message);
   }
@@ -50,6 +60,9 @@ class HttpError extends Error {
 
 const CACHE_KEY = "ledger.cache.v2";
 const OUTBOX_KEY = "ledger.outbox.v2";
+const TIMEOUT_MS = 12_000;
+const RETRY_MS = 15_000;
+const FAIL_NOTICE_AFTER = 5; // 同一個動作連續失敗幾次才跳提示
 
 function load<T>(key: string): T | null {
   try {
@@ -74,12 +87,20 @@ export function newId(): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
-async function request(method: string, url: string, body?: unknown, headers: Record<string, string> = {}) {
+interface Reply {
+  status: number;
+  etag: string | null;
+  json: unknown;
+}
+
+/** 送一個請求，連回應內容一起在時限內讀完（不然網路卡在一半，同步會整個卡住）。 */
+async function request(method: string, url: string, body?: unknown,
+  headers: Record<string, string> = {}): Promise<Reply> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12_000);
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const hdrs: Record<string, string> = { ...headers };
-    if (method !== "GET") hdrs["X-Ledger"] = "1"; // 伺服器擋跨站偷改：會改資料的請求都要帶（DELETE 沒有 body 也要）
+    if (method !== "GET") hdrs["X-Ledger"] = "1"; // 伺服器擋跨站偷改：會改資料的請求都要帶
     if (body !== undefined) hdrs["Content-Type"] = "application/json";
     const res = await fetch(url, {
       method,
@@ -88,20 +109,32 @@ async function request(method: string, url: string, body?: unknown, headers: Rec
       cache: "no-store",
       signal: ctrl.signal,
     });
+    const text = res.status === 304 ? "" : await res.text();
+    let json: unknown = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
     if (res.status >= 400) {
-      let msg = `HTTP ${res.status}`;
-      try {
-        const j = await res.json();
-        msg = j.error ?? (Array.isArray(j.detail) ? j.detail.map((d: { msg: string }) => d.msg).join("；") : msg);
-      } catch {
-        /* 不是 JSON */
-      }
+      const j = json as { error?: string; detail?: { msg: string }[] } | null;
+      const msg = j?.error ?? (Array.isArray(j?.detail) ? j!.detail!.map((d) => d.msg).join("；") : `HTTP ${res.status}`);
       throw new HttpError(res.status, msg);
     }
-    return res;
+    if (res.status < 300 && json === null) {
+      throw new HttpError(502, "伺服器回的不是記帳本的資料（是不是正在換版？）");
+    }
+    return { status: res.status, etag: res.headers.get("ETag"), json };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** 伺服器明確拒絕這筆資料（重送也沒用）→ 丟掉並告訴使用者；其他錯誤都留著重送。 */
+function rejected(e: unknown, op: Op): boolean {
+  if (!(e instanceof HttpError)) return false;
+  if ([400, 409, 413, 422].includes(e.status)) return true;
+  return e.status === 404 && op.op === "update";
 }
 
 /** 跟後端 lib/fx.lock_to_cad 一樣：非 CAD 的金額換成 CAD、原幣寫進備註（畫面先這樣顯示）。 */
@@ -111,8 +144,9 @@ function lockFx(t: TxnInput, rates: Record<string, number>): TxnInput {
   if (!rate) return t;
   const sym = CURRENCY_SYMBOL[t.currency] ?? `${t.currency} `;
   const orig = `原幣 ${sym}${t.amount.toFixed(2)} @${rate.toFixed(4)}`;
+  const note = t.note.trim().replace(/^原幣 [^｜]*(｜|$)/, "").trim();
   return { ...t, amount: Math.round(t.amount * rate * 100) / 100, currency: "CAD",
-    note: t.note.trim() ? `${orig}｜${t.note.trim()}` : orig };
+    note: note ? `${orig}｜${note}` : orig };
 }
 
 function toTxn(t: TxnInput, rates: Record<string, number>, old?: Txn): Txn {
@@ -131,7 +165,7 @@ function toTxn(t: TxnInput, rates: Record<string, number>, old?: Txn): Txn {
     source: x.source ?? old?.source ?? "app",
     currency: x.currency,
     split: x.type === "expense" ? x.split : "own",
-    location: old?.location ?? "",
+    location: x.location ?? old?.location ?? "",
   };
 }
 
@@ -143,7 +177,7 @@ function upsert(list: Txn[], t: Txn): Txn[] {
   return out;
 }
 
-class Store {
+export class Store {
   private server: Data | null;
   private etag: string | null;
   private outbox: Op[];
@@ -152,7 +186,10 @@ class Store {
   private lastSync: number | null = null;
   private error: string | null = null;
   private fetching: Promise<void> | null = null;
-  private flushing = false;
+  private refetchAfter = false;
+  private opsDone = 0; // 送成功的動作數：抓資料期間有變，表示那份回應可能比較舊
+  private flushing: Promise<void> | null = null;
+  private flushAgain = false;
   private inflight: Op | null = null;
   private listeners = new Set<() => void>();
   private noticeFns = new Set<(msg: string) => void>();
@@ -171,10 +208,17 @@ class Store {
   // ---- 給 React 用 ----------------------------------------------------------
   subscribe = (fn: () => void) => {
     this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
   };
 
   getSnapshot = () => this.snap;
+
+  /** 正在送或正在抓（測試用來等它做完）。 */
+  get busy(): boolean {
+    return this.flushing !== null || this.fetching !== null;
+  }
 
   onNotice(fn: (msg: string) => void): () => void {
     this.noticeFns.add(fn);
@@ -231,19 +275,28 @@ class Store {
   }
 
   // ---- 讀 -------------------------------------------------------------------
-  /** 跟伺服器拿最新的（沒變的話伺服器回 304，幾乎不花流量）。 */
-  refresh(): Promise<void> {
-    if (this.fetching) return this.fetching;
+  /**
+   * 跟伺服器拿最新的（沒變的話伺服器回 304，幾乎不花流量）。
+   * force：已經在抓的話，抓完再抓一次（那一份可能比剛送到的改動舊）。
+   */
+  refresh(force = false): Promise<void> {
+    if (this.fetching) {
+      if (force) this.refetchAfter = true;
+      return this.fetching;
+    }
     this.fetching = (async () => {
       this.syncing = true;
       this.emit();
+      const opsAtStart = this.opsDone;
       try {
         const res = await request("GET", "/api/data", undefined,
           this.etag && this.server ? { "If-None-Match": this.etag } : {});
-        if (res.status !== 304) {
-          const data = (await res.json()) as Data;
+        if (this.opsDone !== opsAtStart) {
+          this.refetchAfter = true; // 抓的時候自己的改動剛送到：這份可能是舊的，不用
+        } else if (res.status !== 304 && res.json) {
+          const data = res.json as Data;
           this.server = { ...data, meta: normalizeMeta(data.meta) };
-          this.etag = res.headers.get("ETag");
+          this.etag = res.etag;
         }
         this.lastSync = Date.now();
         this.offline = false;
@@ -257,25 +310,40 @@ class Store {
         this.fetching = null;
         this.emit();
       }
+      if (this.refetchAfter) {
+        this.refetchAfter = false;
+        await this.refresh();
+      }
     })();
     return this.fetching;
   }
 
   // ---- 寫 -------------------------------------------------------------------
   private enqueue(op: Op) {
-    // 同一筆還沒送出的變更合併掉，少送幾次（正在送的那一個不能動，不然新的改動會跟著被移掉）
-    const i = this.outbox.findIndex((o) => o !== this.inflight && o.op !== "meta" && o.id === op.id);
-    if (i >= 0 && op.op !== "meta") {
-      const prev = this.outbox[i];
-      if (op.op === "update" && (prev.op === "add" || prev.op === "update")) {
-        this.outbox[i] = { ...prev, txn: op.txn };
-      } else if (op.op === "delete" && prev.op === "add") {
-        this.outbox.splice(i, 1); // 還沒上傳就刪掉：兩個都不用送
-      } else if (op.op === "delete") {
-        this.outbox[i] = op;
-      } else {
-        this.outbox.push(op);
+    // 找同一筆「最後一個」排隊的動作；它還沒送出去過才合併（送出去過的可能已經到伺服器了，不能動）
+    let i = -1;
+    if (op.op !== "meta") {
+      for (let k = this.outbox.length - 1; k >= 0; k--) {
+        const o = this.outbox[k];
+        if (o.op !== "meta" && o.id === op.id) {
+          i = o.sent || o === this.inflight ? -1 : k;
+          break;
+        }
       }
+    }
+    const prev = i >= 0 ? this.outbox[i] : null;
+    if (prev && op.op === "update" && (prev.op === "add" || prev.op === "update")) {
+      // 合併改動，保留原本的建立時間
+      this.outbox[i] = { ...prev, txn: { ...op.txn, created_at: prev.txn.created_at ?? op.txn.created_at } };
+    } else if (prev && op.op === "delete" && prev.op === "add") {
+      this.outbox.splice(i, 1); // 這次新增根本還沒送：一起取消
+    } else if (prev && op.op === "delete" && prev.op === "update") {
+      this.outbox[i] = op;
+    } else if (prev && op.op === "delete" && prev.op === "delete") {
+      /* 已經要刪了 */
+    } else if (prev && op.op === "add" && prev.op === "delete") {
+      // 刪除還沒送出就按了復原：伺服器上那筆還在，改成「改回復原的內容」
+      this.outbox[i] = { op: "update", id: op.id, txn: op.txn };
     } else {
       this.outbox.push(op);
     }
@@ -307,7 +375,7 @@ class Store {
       op: "add", id: t.id,
       txn: { id: t.id, created_at: t.created_at, date: t.date, person: t.person, type: t.type,
         category: t.category, item: t.item, amount: t.amount, note: t.note,
-        currency: t.currency, split: t.split, source: t.source },
+        currency: t.currency, split: t.split, source: t.source, location: t.location ?? "" },
     });
   }
 
@@ -315,36 +383,55 @@ class Store {
     this.enqueue({ op: "meta", id: newId(), patch });
   }
 
-  private async send(op: Op) {
+  private async send(op: Op): Promise<unknown> {
     if (op.op === "add") {
-      const res = await request("POST", "/api/transactions", { ...op.txn, id: op.id });
-      return (await res.json()).txn as Txn;
+      return ((await request("POST", "/api/transactions", { ...op.txn, id: op.id })).json as { txn: Txn }).txn;
     }
     if (op.op === "update") {
-      const res = await request("PUT", `/api/transactions/${encodeURIComponent(op.id)}`, op.txn);
-      return (await res.json()).txn as Txn;
+      return ((await request("PUT", `/api/transactions/${encodeURIComponent(op.id)}`, op.txn)).json as { txn: Txn }).txn;
     }
     if (op.op === "delete") {
       await request("DELETE", `/api/transactions/${encodeURIComponent(op.id)}`);
       return null;
     }
-    const res = await request("PUT", "/api/meta", op.patch);
-    return (await res.json()).meta as Meta;
+    return ((await request("PUT", "/api/meta", op.patch)).json as { meta: Meta }).meta;
   }
 
-  /** 依序送出待上傳的變更。 */
-  async flush(): Promise<void> {
-    if (this.flushing) return;
-    this.flushing = true;
+  /**
+   * 依序送出待上傳的變更。正在送的時候又被叫（新記了一筆、剛連上網、按了立刻同步），
+   * 這一輪做完會馬上再跑一輪，不用等 15 秒後的重試。
+   */
+  flush(): Promise<void> {
+    if (this.flushing) {
+      this.flushAgain = true;
+      return this.flushing;
+    }
+    this.flushing = (async () => {
+      try {
+        do {
+          this.flushAgain = false;
+          await this.flushOnce();
+        } while (this.flushAgain && this.outbox.length);
+      } finally {
+        this.flushing = null;
+      }
+    })();
+    return this.flushing;
+  }
+
+  private async flushOnce(): Promise<void> {
     let sent = 0;
-    try {
+    {
       while (this.outbox.length) {
         const op = this.outbox[0];
         const drop = () => {
           const k = this.outbox.indexOf(op);
           if (k >= 0) this.outbox.splice(k, 1);
         };
+        // 先記下「送出去過」再送：之後就算沒收到回應，也不會再拿它來合併
+        op.sent = true;
         this.inflight = op;
+        this.persistOutbox();
         try {
           const result = await this.send(op);
           if (this.server) {
@@ -354,20 +441,26 @@ class Store {
             } else if (op.op === "meta") {
               this.server = { ...this.server, meta: normalizeMeta(result as Meta) };
             } else {
-              this.server = { ...this.server,
-                transactions: upsert(this.server.transactions, result as Txn) };
+              this.server = { ...this.server, transactions: upsert(this.server.transactions, result as Txn) };
             }
+            this.etag = null; // 手機上這份已經跟伺服器的 ETag 不同了
           }
           drop();
+          this.opsDone += 1;
           sent += 1;
           this.offline = false;
+          this.persistServer();
         } catch (e) {
-          if (e instanceof HttpError && e.status >= 400 && e.status < 500 && e.status !== 408
-              && e.status !== 429) {
-            // 伺服器說這筆不行（例如對方已經刪掉了）：丟掉，告訴使用者
+          if (rejected(e, op)) {
             drop();
-            this.notice(e.status === 404 ? "這筆已經被刪掉了，修改沒有存進去" : `有一筆沒存成功：${e.message}`);
+            this.notice(e instanceof HttpError && e.status === 404
+              ? "這筆已經被刪掉了，修改沒有存進去"
+              : `有一筆沒存成功：${(e as Error).message}`);
             continue;
+          }
+          op.tries = (op.tries ?? 0) + 1;
+          if (op.tries === FAIL_NOTICE_AFTER) {
+            this.notice(`有 ${this.outbox.length} 筆一直送不出去（${e instanceof HttpError ? e.message : "連不上"}），先留在手機上，會再試`);
           }
           this.offline = !(e instanceof HttpError);
           this.scheduleRetry();
@@ -378,14 +471,8 @@ class Store {
           this.emit();
         }
       }
-    } finally {
-      this.flushing = false;
     }
-    if (sent > 0 && this.outbox.length === 0) {
-      this.etag = null; // 對方可能也改了東西：整包重抓一次
-      this.persistServer();
-      void this.refresh();
-    }
+    if (sent > 0 && this.outbox.length === 0) void this.refresh(true); // 對方可能也改了東西
   }
 
   private scheduleRetry() {
@@ -393,7 +480,7 @@ class Store {
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
       void this.flush();
-    }, 15_000);
+    }, RETRY_MS);
   }
 
   /** app 開起來時呼叫一次：先送待上傳的，再抓最新的；之後回到 app、連上網都會再同步。 */

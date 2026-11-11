@@ -97,7 +97,7 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
   onCat: (c: string, type: "expense" | "income") => void;
 }) {
   const today = todayLocal();
-  const { cur: p, prev, label } = A.pnlCompare(rows, fixed, month, today);
+  const { cur: p, curCmp, prev, label } = A.pnlCompare(rows, fixed, month, today);
   const years = [...new Set(rows.map((r) => r.month.slice(0, 4)))].sort().reverse();
   const [year, setYear] = useState(month.slice(0, 4));
   const yr = years.includes(year) ? year : years[0] ?? month.slice(0, 4);
@@ -129,10 +129,10 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
       <MonthNav month={month} min={range[0]} max={range[1]} onChange={setMonth} />
       <div className="grid grid-cols-2 gap-3">
         <Tile label="總支出" value={money(p.expense, { cents: false })}>
-          <Delta cur={p.expense} prev={prev?.expense} goodWhenDown label={short} />
+          <Delta cur={curCmp.expense} prev={prev?.expense} goodWhenDown label={short} />
         </Tile>
         <Tile label="淨存" value={money(p.net, { cents: false })}>
-          <Delta cur={p.net} prev={prev?.net} label={short} />
+          <Delta cur={curCmp.net} prev={prev?.net} label={short} />
         </Tile>
         <Tile label="儲蓄率" value={pct(p.save_rate)}>
           <div className="mt-1 text-[12px] text-muted">淨存 ÷ 收入</div>

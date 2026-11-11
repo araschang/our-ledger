@@ -38,7 +38,8 @@ export function Overview({ month, setMonth, range, onEdit, header }: {
   const monthly = A.monthlySummary(rows.filter((r) => r.month <= range[1]), 12);
 
   // 預算：依「用掉幾成」排，快超或超支的在最上面；這個月還沒過完時畫一條「時間進度」
-  const budgets = Object.entries(meta.budgets ?? {}).filter(([, b]) => Number(b) > 0);
+  const budgets = Object.entries(meta.budgets ?? {})
+    .filter(([c, b]) => Number(b) > 0 && meta.categories.expense.includes(c));
   const spentBy = new Map(breakdown.map((b) => [b.category, b.amount]));
   const brows = budgets
     .map(([c, b]) => ({ c, b: Number(b), sp: spentBy.get(c) ?? 0 }))

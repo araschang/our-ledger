@@ -48,7 +48,11 @@ self.addEventListener("fetch", (e) => {
         if (res.ok) return res;
         return (await cache.match("/")) || res; // 伺服器出錯（5xx）：先用手機上的 app
       } catch {
-        e.waitUntil(net.catch(() => {})); // 網路慢：先開舊的，晚到的新版照樣存起來，下次就是新的
+        try {
+          e.waitUntil(net.catch(() => {})); // 網路慢：先開舊的，晚到的新版照樣存起來，下次就是新的
+        } catch {
+          /* 有的瀏覽器這時候不給延長：沒關係，下次打開再更新 */
+        }
         return (await cache.match("/")) || Response.error();
       }
     })());

@@ -45,6 +45,10 @@ def source() -> str:
     return _cache["source"]
 
 
+# 系統自己加的前綴：「原幣 US$10.00 @1.4000」（後面可能接「｜使用者備註」）
+_ORIG = re.compile(r"^原幣 (?:CA\$|US\$|NT\$|[A-Z]{3} )[\d,]+\.\d{2} @\d+\.\d{4}(?:｜|$)")
+
+
 def sym(currency: str) -> str:
     return CURRENCIES.get(currency, f"{currency} ")
 
@@ -61,7 +65,7 @@ def lock_to_cad(row: dict, rate_table: dict | None = None) -> dict:
         raise ValueError(f"不支援的幣別：{cur}")
     orig = f"原幣 {sym(cur)}{float(row['amount']):,.2f} @{rate:.4f}"
     # 已經換算過的帳又改成外幣：換掉舊的「原幣…」前綴，不要疊兩個
-    note = re.sub(r"^原幣 [^｜]*(｜|$)", "", (row.get("note") or "").strip()).strip()
+    note = _ORIG.sub("", (row.get("note") or "").strip(), count=1).strip()
     row["note"] = f"{orig}｜{note}" if note else orig
     row["amount"] = round(float(row["amount"]) * rate, 2)
     row["currency"] = "CAD"

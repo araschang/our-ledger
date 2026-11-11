@@ -37,7 +37,7 @@ export interface TxnInput {
 
 type Op =
   | { op: "add"; id: string; txn: TxnInput; sent?: boolean; tries?: number }
-  | { op: "update"; id: string; txn: TxnInput; sent?: boolean; tries?: number }
+  | { op: "update"; id: string; txn: TxnInput; sent?: boolean; tries?: number; restore?: boolean }
   | { op: "delete"; id: string; sent?: boolean; tries?: number }
   | { op: "meta"; id: string; patch: Partial<Meta>; sent?: boolean; tries?: number };
 
@@ -144,7 +144,8 @@ function lockFx(t: TxnInput, rates: Record<string, number>): TxnInput {
   if (!rate) return t;
   const sym = CURRENCY_SYMBOL[t.currency] ?? `${t.currency} `;
   const orig = `原幣 ${sym}${t.amount.toFixed(2)} @${rate.toFixed(4)}`;
-  const note = t.note.trim().replace(/^原幣 [^｜]*(｜|$)/, "").trim();
+  // 只拿掉系統自己加的「原幣 US$10.00 @1.4000」前綴（使用者自己打的字不動）
+  const note = t.note.trim().replace(/^原幣 (?:CA\$|US\$|NT\$|[A-Z]{3} )[\d,]+\.\d{2} @\d+\.\d{4}(?:｜|$)/, "").trim();
   return { ...t, amount: Math.round(t.amount * rate * 100) / 100, currency: "CAD",
     note: note ? `${orig}｜${note}` : orig };
 }
@@ -342,8 +343,9 @@ export class Store {
     } else if (prev && op.op === "delete" && prev.op === "delete") {
       /* 已經要刪了 */
     } else if (prev && op.op === "add" && prev.op === "delete") {
-      // 刪除還沒送出就按了復原：伺服器上那筆還在，改成「改回復原的內容」
-      this.outbox[i] = { op: "update", id: op.id, txn: op.txn };
+      // 刪除還沒送出就按了復原：伺服器上那筆還在，改成「改回復原的內容」；
+      // 萬一送到時對方已經刪了（404），就改成新增回去（restore 標記）
+      this.outbox[i] = { op: "update", id: op.id, txn: op.txn, restore: true };
     } else {
       this.outbox.push(op);
     }
@@ -451,6 +453,12 @@ export class Store {
           this.offline = false;
           this.persistServer();
         } catch (e) {
+          if (e instanceof HttpError && e.status === 404 && op.op === "update" && op.restore) {
+            // 復原時那筆已經被對方刪了：照復原的內容新增回去（同 id、同建立時間）
+            const k = this.outbox.indexOf(op);
+            if (k >= 0) this.outbox[k] = { op: "add", id: op.id, txn: op.txn };
+            continue;
+          }
           if (rejected(e, op)) {
             drop();
             this.notice(e instanceof HttpError && e.status === 404

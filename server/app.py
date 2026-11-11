@@ -21,7 +21,7 @@ from typing import Literal
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from lib import fx
 from lib.api import ApiError
@@ -144,8 +144,11 @@ def update(txn_id: str, body: TxnIn):
     if old is None:
         raise ApiError(f"找不到這筆（id {txn_id}），可能已經被刪掉了", status=404)
     sent = body.model_dump(exclude_unset=True)
-    merged = TxnIn.model_validate({**{k: old[k] for k in TxnIn.model_fields if k in old},
-                                   **sent, "id": txn_id, "created_at": old["created_at"]})
+    try:
+        merged = TxnIn.model_validate({**{k: old[k] for k in TxnIn.model_fields if k in old},
+                                       **sent, "id": txn_id, "created_at": old["created_at"]})
+    except ValidationError as e:  # 舊資料某個欄位不合現在的規則：回 400（手機會提示，不會一直重送）
+        raise ApiError(f"這筆舊資料有欄位不合格式：{e.errors()[0].get('msg', '')}", status=400) from e
     return {"txn": db().update_row(_row(merged, new=False))}
 
 

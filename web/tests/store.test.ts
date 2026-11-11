@@ -247,3 +247,29 @@ test("記美金：畫面先換成 CAD，備註的原幣前綴不會疊兩個", a
   const id = s.add({ ...base, amount: 10, currency: "USD", note: "原幣 US$5.00 @1.3000｜tip" });
   expect(row(s, id)).toMatchObject({ amount: 14, currency: "CAD", note: "原幣 US$10.00 @1.4000｜tip" });
 });
+
+test("離線時刪掉（排在別的動作後面）再按復原，連上網前對方也刪了 → 照復原的內容新增回去", async () => {
+  server.rows.set("x4", { ...base, id: "x4", amount: 9, created_at: "2026-11-09T09:00:00" });
+  const s = await freshStore();
+  server.offline = true;
+  s.add({ ...base, item: "Y", amount: 1 }); // 排在前面、已經試送過一次
+  await settle(s);
+  const backup = s.remove("x4")!;
+  s.restore(backup);
+  server.rows.delete("x4"); // 對方在他手機上刪了
+  server.offline = false;
+  const notes: string[] = [];
+  s.onNotice((m) => notes.push(m));
+  await s.flush();
+  await settle(s);
+  expect(server.rows.get("x4")).toMatchObject({ amount: 9, created_at: "2026-11-09T09:00:00" });
+  expect(row(s, "x4")?.amount).toBe(9);
+  expect(notes).toEqual([]);
+});
+
+test("使用者自己打「原幣」開頭的備註不會被吃掉", async () => {
+  const s = await freshStore();
+  server.offline = true;
+  const id = s.add({ ...base, amount: 10, currency: "USD", note: "原幣是台幣，記錯了" });
+  expect(row(s, id)?.note).toBe("原幣 US$10.00 @1.4000｜原幣是台幣，記錯了");
+});

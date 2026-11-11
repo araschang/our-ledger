@@ -206,3 +206,9 @@ def test_foreign_currency_prefix_not_doubled(client):
     b = client.put(f"/api/transactions/{a['id']}", json=txn(currency="USD", amount=20, note=a["note"]),
                    headers=H).json()["txn"]
     assert b["note"] == "原幣 US$20.00 @1.4000｜tip" and b["amount"] == 28.0
+
+
+def test_user_note_starting_with_yuanbi_is_kept(client):
+    got = client.post("/api/transactions", json=txn(currency="USD", amount=10, note="原幣是台幣，記錯了"),
+                      headers=H).json()["txn"]
+    assert got["note"] == "原幣 US$10.00 @1.4000｜原幣是台幣，記錯了"

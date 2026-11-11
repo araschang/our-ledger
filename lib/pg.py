@@ -1,22 +1,23 @@
-"""Postgres 後端：介面跟 GasClient 一樣（get_all/add/update/delete/save_meta），UI 不用改。
+"""Postgres 後端：網站（server/app.py）、手機捷徑（api/server.py）、舊版 Streamlit 共用。
 
-自架時取代 Google Sheet。txn 正規化規則對齊 apps_script/Code.gs，
-手機捷徑打的 api/server.py 也共用這裡。表不存在會自動建立。
+txn 正規化規則對齊 apps_script/Code.gs。表不存在會自動建立。
+不依賴 pandas（新版網站的 image 不裝 pandas）。
 """
 import re
 import uuid
-from datetime import datetime
+from datetime import date as Date, datetime
 from zoneinfo import ZoneInfo
 
-import pandas as pd
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from lib import fx
 from lib.api import ApiError
 
 TZ = ZoneInfo("America/Vancouver")  # 「今天」以溫哥華為準，跟 Code.gs 一樣
 SPLITS = ("half", "own", "advance")
+TYPES = ("expense", "income", "settle")  # settle = 結清：person 把欠款付給對方
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS transactions (
@@ -70,30 +71,61 @@ def _amount(v) -> float:
         return 0.0
 
 
+_JS_DATE = "%a %b %d %Y %H:%M:%S GMT%z"  # 舊 Sheet 的 JS Date 字串
+
+
 def _ts(v) -> datetime | None:
-    """created_at → 溫哥華當地 naive datetime。舊資料可能是 JS Date 字串（含 "(Pacific...)" 尾巴）。"""
+    """created_at → 溫哥華當地 naive datetime。
+
+    接受 ISO（有沒有時區都行）和舊資料的 JS Date 字串
+    （"Thu Aug 07 2026 18:23:37 GMT-0700 (Pacific Daylight Time)"）。
+    """
     if not v:
         return None
-    s = re.sub(r"\s*\(.+\)$", "", str(v))
-    s = re.sub(r"GMT(?=[+-])", "", s)  # dateutil 把 "GMT-0700" 的正負號當 POSIX 反著解
-    ts = pd.to_datetime(s, errors="coerce", format="mixed")
-    if pd.isna(ts):
-        return None
+    if isinstance(v, datetime):
+        ts = v
+    else:
+        s = re.sub(r"\s*\(.+\)$", "", str(v)).strip()
+        ts = None
+        try:
+            ts = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            for fmt in (_JS_DATE, "%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M", "%Y-%m-%d %H:%M"):
+                try:
+                    ts = datetime.strptime(s, fmt)
+                    break
+                except ValueError:
+                    continue
+        if ts is None:
+            return None
     if ts.tzinfo is not None:
-        ts = ts.tz_convert(TZ).tz_localize(None)
-    return ts.to_pydatetime()
+        ts = ts.astimezone(TZ).replace(tzinfo=None)
+    return ts
+
+
+def _date(v, fallback: datetime | None) -> str:
+    s = str(v or "")[:10]
+    if s:
+        try:
+            return Date.fromisoformat(s).isoformat()
+        except ValueError:
+            pass
+    return fallback.strftime("%Y-%m-%d") if fallback else ""
+
+
+def now_local() -> datetime:
+    return datetime.now(TZ).replace(tzinfo=None, microsecond=0)
 
 
 def normalize(t: dict, *, new: bool) -> dict:
     """前端/捷徑送來的 txn → 一列。new=True 時補 id/created_at/date（同 Code.gs 的 add）。"""
     created = _ts(t.get("created_at"))
     if new and created is None:
-        created = datetime.now(TZ).replace(tzinfo=None, microsecond=0)
-    date = str(t.get("date") or "")[:10] or (created.strftime("%Y-%m-%d") if created else "")
+        created = now_local()
     return {
         "id": str(t.get("id") or (uuid.uuid4().hex[:8] if new else "")),
         "created_at": created,
-        "date": date,
+        "date": _date(t.get("date"), created),
         "person": str(t.get("person") or ""),
         "type": str(t.get("type") or "expense"),
         "category": str(t.get("category") or "other"),
@@ -102,7 +134,7 @@ def normalize(t: dict, *, new: bool) -> dict:
         "note": str(t.get("note") or ""),
         "location": str(t.get("location") or ""),
         "source": str(t.get("source") or ""),
-        "currency": str(t.get("currency") or "CAD"),
+        "currency": str(t.get("currency") or "CAD").upper(),
         "split": split_of(t),
     }
 
@@ -111,15 +143,20 @@ def _out(r: dict) -> dict:
     return {
         **r,
         "created_at": r["created_at"].strftime("%Y-%m-%dT%H:%M:%S"),
-        "date": r["date"].isoformat(),
+        "date": r["date"].isoformat() if hasattr(r["date"], "isoformat") else str(r["date"]),
         "amount": float(r["amount"]),
-        "shared": r["split"] == "half",  # 舊欄位，前端/統計還會看
+        "shared": r["split"] == "half",  # 舊欄位，舊版前端/統計還會看
     }
+
+
+_INSERT = (f"INSERT INTO transactions ({', '.join(COLS)}) "
+           f"VALUES ({', '.join('%(' + c + ')s' for c in COLS)})")
+_SELECT = f"SELECT {', '.join(COLS)} FROM transactions"
 
 
 class PgClient:
     def __init__(self, dsn: str, token: str = ""):
-        # url/token 跟 GasClient 同名：_bundle 拿它們當快取 key
+        # url/token 跟 GasClient 同名：舊版 Streamlit 拿它們當快取 key
         self.url = dsn.strip()
         self.token = token
 
@@ -131,31 +168,39 @@ class PgClient:
             _ready.add(self.url)
         return conn
 
-    def _run(self, fn) -> dict:
-        """在一個交易裡執行 fn(conn)，回最新全量（同 Code.gs 每個 POST 的回應）。"""
+    def _tx(self, fn):
+        """在一個交易裡執行 fn(conn) 並回傳它的結果；資料庫錯誤一律轉成 ApiError。"""
         try:
             with self._conn() as conn:
-                fn(conn)
-                return self._all(conn)
+                return fn(conn)
         except psycopg.Error as e:
             raise ApiError(f"資料庫錯誤：{e}") from e
 
+    def _run(self, fn) -> dict:
+        """舊協定：執行 fn(conn) 後回最新全量（同 Code.gs 每個 POST 的回應）。"""
+        def both(conn):
+            fn(conn)
+            return self._all(conn)
+        return self._tx(both)
+
     @staticmethod
     def _all(conn) -> dict:
-        rows = conn.execute(
-            f"SELECT {', '.join(COLS)} FROM transactions ORDER BY created_at, id").fetchall()
+        rows = conn.execute(f"{_SELECT} ORDER BY created_at, id").fetchall()
         meta = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM meta")}
         return {"ok": True, "transactions": [_out(r) for r in rows], "meta": meta}
 
+    # ---- 舊協定（捷徑 api/server.py、舊版 Streamlit 用）----------------------
     def get_all(self) -> dict:
         """回 {'transactions': [...], 'meta': {...}}"""
-        return self._run(lambda conn: None)
+        return self._tx(self._all)
 
     def add_txn(self, txn: dict) -> dict:
         row = normalize(txn, new=True)
-        return self._run(lambda conn: conn.execute(
-            f"INSERT INTO transactions ({', '.join(COLS)}) "
-            f"VALUES ({', '.join('%(' + c + ')s' for c in COLS)})", row))
+        try:
+            fx.lock_to_cad(row)  # 捷徑記的美金/台幣也在記帳當下鎖匯率
+        except ValueError as e:
+            raise ApiError(str(e)) from e
+        return self._run(lambda conn: conn.execute(_INSERT, row))
 
     def update_txn(self, txn: dict) -> dict:
         row = normalize(txn, new=False)
@@ -187,10 +232,54 @@ class PgClient:
         def fn(conn):
             conn.execute("DELETE FROM transactions")
             with conn.cursor() as cur:
-                cur.executemany(
-                    f"INSERT INTO transactions ({', '.join(COLS)}) "
-                    f"VALUES ({', '.join('%(' + c + ')s' for c in COLS)})", rows)
+                cur.executemany(_INSERT, rows)
             conn.execute("DELETE FROM meta")
             for k, v in (meta or {}).items():
                 conn.execute("INSERT INTO meta (key, value) VALUES (%s, %s)", (k, Jsonb(v)))
         return self._run(fn)
+
+    # ---- 新版網站（server/app.py）：一次只回一列 ------------------------------
+    def insert_row(self, row: dict) -> tuple[dict, bool]:
+        """新增一列（row 已正規化）。同一個 id 已存在就不動、回原本那列（離線重送不會重複）。
+
+        回 (那一列, 這次是不是真的新增)。
+        """
+        def fn(conn):
+            got = conn.execute(_INSERT + " ON CONFLICT (id) DO NOTHING RETURNING *",
+                               row).fetchone()
+            if got:
+                return _out(got), True
+            old = conn.execute(f"{_SELECT} WHERE id = %s", (row["id"],)).fetchone()
+            return _out(old), False
+        return self._tx(fn)
+
+    def update_row(self, row: dict) -> dict:
+        def fn(conn):
+            sets = ", ".join(f"{c} = %({c})s" for c in COLS if c not in ("id", "created_at"))
+            got = conn.execute(
+                f"UPDATE transactions SET {sets}, "
+                "created_at = COALESCE(%(created_at)s, created_at) WHERE id = %(id)s "
+                "RETURNING *", row).fetchone()
+            if not got:
+                raise ApiError(f"找不到這筆（id {row['id']}），可能已經被刪掉了")
+            return _out(got)
+        return self._tx(fn)
+
+    def get_row(self, txn_id: str) -> dict | None:
+        got = self._tx(lambda conn: conn.execute(
+            f"{_SELECT} WHERE id = %s", (str(txn_id),)).fetchone())
+        return _out(got) if got else None
+
+    def delete_row(self, txn_id: str) -> bool:
+        return self._tx(lambda conn: conn.execute(
+            "DELETE FROM transactions WHERE id = %s", (str(txn_id),)).rowcount > 0)
+
+    def merge_meta(self, partial: dict) -> dict:
+        """只改送來的 key（其他設定不動），回完整 meta。"""
+        def fn(conn):
+            for k, v in (partial or {}).items():
+                conn.execute(
+                    "INSERT INTO meta (key, value) VALUES (%s, %s) "
+                    "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (k, Jsonb(v)))
+            return {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM meta")}
+        return self._tx(fn)

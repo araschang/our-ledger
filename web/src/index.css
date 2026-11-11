@@ -1,0 +1,257 @@
+@import "tailwindcss";
+
+/* 色票：圖表色照 dataviz 驗證過的那組（淺色/深色各自選過，不是自動反轉）。
+   背景/卡片/文字用 token，深色模式只換這裡。 */
+:root {
+  color-scheme: light;
+  --page: #f4f3ef;
+  --card: #ffffff;
+  --card-2: #f0efeb;
+  --card-3: #e6e5e0;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --line: #e7e6e1;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --primary: #0b0b0b;
+  --on-primary: #ffffff;
+  --link: #2a78d6;
+  --good: #006300;
+  --warn: #fab219;
+  --serious: #ec835a;
+  --bad: #d03b3b;
+  --bad-soft: #fbe9e8;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-other: #b9b8b1;
+  --shadow: 0 1px 2px rgba(20, 20, 20, 0.05), 0 4px 14px rgba(20, 20, 20, 0.05);
+  --ring: rgba(11, 11, 11, 0.1);
+  --toast: #1f1f1d;
+  --thumb: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --card: #1a1a19;
+  --card-2: #262624;
+  --card-3: #33332f;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --line: #2c2c2a;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --primary: #f0efec;
+  --on-primary: #0b0b0b;
+  --link: #3987e5;
+  --good: #0ca30c;
+  --bad-soft: #3a1f1e;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-other: #5b5a55;
+  --shadow: none;
+  --ring: rgba(255, 255, 255, 0.1);
+  --toast: #3a3a37;
+  --thumb: #46463f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --card: #1a1a19;
+    --card-2: #262624;
+    --card-3: #33332f;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --line: #2c2c2a;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --primary: #f0efec;
+    --on-primary: #0b0b0b;
+    --link: #3987e5;
+    --good: #0ca30c;
+    --bad-soft: #3a1f1e;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-other: #5b5a55;
+    --shadow: none;
+    --ring: rgba(255, 255, 255, 0.1);
+    --toast: #3a3a37;
+    --thumb: #46463f;
+  }
+}
+
+@theme {
+  --color-page: var(--page);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-card-3: var(--card-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-link: var(--link);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --font-sans: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+
+/* app 殼：整頁不捲，各畫面自己捲（iOS 加到主畫面時才像 app） */
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+button,
+[role="button"],
+a,
+input,
+select,
+label {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+input,
+textarea,
+select {
+  font-size: 16px; /* 小於 16px，iPhone 一點輸入框就整頁放大 */
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.card {
+  background: var(--card);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  outline: 1px solid var(--ring);
+  outline-offset: -1px;
+}
+.scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.press {
+  transition: transform 0.08s ease, background-color 0.15s ease, opacity 0.15s ease;
+}
+.press:active {
+  transform: scale(0.96);
+}
+.safe-b {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-t {
+  padding-top: env(safe-area-inset-top);
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes toast-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+@keyframes flash {
+  0% {
+    background: color-mix(in oklab, var(--link) 22%, var(--card));
+  }
+  100% {
+    background: var(--card);
+  }
+}
+.anim-sheet {
+  animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.anim-fade {
+  animation: fade-in 0.2s ease;
+}
+.anim-toast {
+  animation: toast-in 0.22s ease;
+}
+.anim-flash {
+  animation: flash 1.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-sheet,
+  .anim-fade,
+  .anim-toast,
+  .anim-flash,
+  .press {
+    animation: none;
+    transition: none;
+  }
+}

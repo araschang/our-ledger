@@ -1,0 +1,5 @@
+# 新版網站（server/app.py）＋手機捷徑（api/server.py）：不需要 streamlit/pandas
+fastapi==0.115.12
+uvicorn==0.34.3
+psycopg[binary]==3.2.9
+requests>=2.31

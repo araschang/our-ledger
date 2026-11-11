@@ -35,8 +35,9 @@ def to_df(transactions: list) -> pd.DataFrame:
 def to_cad(df: pd.DataFrame, rates: dict) -> pd.DataFrame:
     """把 amount 全部換算成 CAD（rates: 幣別→CAD，缺的當 1.0）。"""
     out = df.copy()
+    # astype(float)：空表時 pandas 3 的 map 會回字串型別，乘出來加總變成 ''
     out["amount"] = out["amount"] * out["currency"].map(
-        lambda c: float(rates.get(c, 1.0)))
+        lambda c: float(rates.get(c, 1.0))).astype(float)
     return out
 
 
@@ -57,7 +58,7 @@ def personal_view(df: pd.DataFrame, person: str | None,
 
     支出：平分(half)→各人一半、自己(own)→付錢的人全額、
           代墊(advance)→不是付錢的那個人扛全額（付的人 0）。
-    收入：記的人全額。
+    收入：記的人全額。結清：不算（只是兩人之間還錢）。
     person=None（綜合視角）原樣回傳：家庭總額本來就是全額。
     """
     if person is None or df.empty:
@@ -66,9 +67,10 @@ def personal_view(df: pd.DataFrame, person: str | None,
     is_exp = df["type"] == "expense"
     is_half = is_exp & (df["split"] == "half")
     is_adv = is_exp & (df["split"] == "advance")
+    is_inc = df["type"] == "income"                  # 結清(settle)不算任何人的收支
     mine = df["person"] == person
     frac = pd.Series(0.0, index=df.index)
-    frac[~is_exp & mine] = 1.0                       # 收入
+    frac[is_inc & mine] = 1.0                        # 收入
     frac[is_exp & ~is_half & ~is_adv & mine] = 1.0   # own
     frac[is_half] = 1.0 / n                          # 平分
     frac[is_adv & ~mine] = 1.0                       # 別人幫我墊的，全額算我的
@@ -223,35 +225,43 @@ def pnl_yearly(df: pd.DataFrame, fixed_cats: list[str],
 def settlement(df: pd.DataFrame, people: list[dict],
                month: str | None = None,
                rates: dict | None = None) -> dict:
-    """結算：half 對半、advance 對方欠全額、own 不進結算。一律 CAD。
+    """結算：half 對半、advance 對方欠全額、own 不進結算、settle 抵掉欠款。一律 CAD。
 
     rates: 各幣別→CAD 的匯率；缺的幣別當 1.0。
     回傳 {'total': 共同開銷(half)總額, 'advance_total': 代墊總額,
           'paid': {pid: 為對方出的錢(half+advance)},
           'balance': {pid: 該拿回(+)/該補(-)}, 'msg': 誰欠誰一句話}
     """
-    sub = df[df["type"] == "expense"].copy()
+    sub = df[df["type"].isin(["expense", "settle"])].copy()
     if month:
         sub = sub[sub["month"] == month]
     rates = rates or {}
-    sub["cad"] = sub["amount"] * sub["currency"].map(lambda c: float(rates.get(c, 1.0)))
+    sub["cad"] = sub["amount"] * sub["currency"].map(
+        lambda c: float(rates.get(c, 1.0))).astype(float)  # 空表也要是數字（見 to_cad）
     ids = [p["id"] for p in people]
     names = {p["id"]: p["name"] for p in people}
-    half = sub[sub["split"] == "half"]
-    adv = sub[sub["split"] == "advance"]
+    exp = sub[sub["type"] == "expense"]
+    half = exp[exp["split"] == "half"]
+    adv = exp[exp["split"] == "advance"]
+    stl = sub[sub["type"] == "settle"]   # 結清：person 把錢付給對方
 
     half_paid = {pid: float(half[half["person"] == pid]["cad"].sum()) for pid in ids}
     adv_paid = {pid: float(adv[adv["person"] == pid]["cad"].sum()) for pid in ids}
+    stl_paid = {pid: float(stl[stl["person"] == pid]["cad"].sum()) for pid in ids}
     total = float(half["cad"].sum())
     adv_total = float(adv["cad"].sum())
     n = len(ids) or 1
-    # half：付的人 + 全額 − 自己那份；advance：付的人 + 全額，其他人分攤欠款
+    # half：付的人 + 全額 − 自己那份；advance：付的人 + 全額，其他人分攤欠款；
+    # settle：付的人 + 金額（還了債），收的人 − 金額
     balance = {}
     for pid in ids:
         others_adv = sum(adv_paid[q] for q in ids if q != pid)
+        others_stl = sum(stl_paid[q] for q in ids if q != pid)
         balance[pid] = (half_paid[pid] - total / n
                         + adv_paid[pid]
-                        - (others_adv / (n - 1) if n > 1 else 0.0))
+                        - (others_adv / (n - 1) if n > 1 else 0.0)
+                        + stl_paid[pid]
+                        - (others_stl / (n - 1) if n > 1 else 0.0))
     balance = {pid: round(v, 2) for pid, v in balance.items()}
     if len(ids) == 2:  # 兩人時強制正負對稱，避免浮點分半差一分錢
         balance[ids[1]] = -balance[ids[0]]
@@ -265,4 +275,5 @@ def settlement(df: pd.DataFrame, people: list[dict],
             debtor, creditor = (b, a) if diff > 0 else (a, b)
             msg = f"{names[debtor]} 要給 {names[creditor]} {abs(diff):,.2f}"
     return {"total": total, "advance_total": adv_total,
+            "settled_total": float(stl["cad"].sum()),
             "paid": paid, "balance": balance, "msg": msg}

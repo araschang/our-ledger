@@ -1,0 +1,26 @@
+{
+  "name": "our-ledger-web",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun x --bun vite",
+    "build": "bun x --bun vite build",
+    "typecheck": "bun x tsc --noEmit -p .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.1.7",
+    "@types/bun": "1.2.13",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "@vitejs/plugin-react": "4.4.1",
+    "tailwindcss": "4.1.7",
+    "typescript": "5.8.3",
+    "vite": "6.3.5"
+  }
+}

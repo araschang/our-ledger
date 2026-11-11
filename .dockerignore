@@ -5,3 +5,5 @@ __pycache__/
 .streamlit/secrets.toml
 docs/
 tests/
+**/node_modules
+web/dist

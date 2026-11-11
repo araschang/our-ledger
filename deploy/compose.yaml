@@ -1,0 +1,62 @@
+# our-ledger（兩人記帳）：程式在 ~/our-ledger，資料在 Postgres `ledger`。
+# 2026-11 起是新版：ledger-web = 手機 app（PWA）＋ JSON API（FastAPI，server/app.py），
+# ledger-api = 手機捷徑的 endpoint（api/server.py，協定沒變）；兩個用同一個 image（Dockerfile.app）。
+# 舊版 Streamlit 留著備用（profile "old"，平常不跑）：
+#   docker compose --profile old up -d ledger-old   → 127.0.0.1:8503
+# 換回舊版：bash ~/our-ledger/deploy/switch.sh --rollback
+x-ledger-app: &ledger-app
+  build:
+    context: ../../our-ledger
+    dockerfile: Dockerfile.app
+  image: our-ledger-app:local
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &ledger-env
+    TZ: ${TZ}
+    DATABASE_URL: postgresql://ledger:${LEDGER_DB_PASSWORD}@postgres:5432/ledger
+
+services:
+  ledger-web:
+    <<: *ledger-app
+    container_name: ledger-web
+    mem_limit: 256m
+    # 不設密碼：只有 tailnet 連得到（同舊版）。/_stcore/health 也回 ok，uptime-kuma/homepage 不用改
+    ports:
+      - "127.0.0.1:8501:8501"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ledger-api:
+    <<: *ledger-app
+    container_name: ledger-api
+    mem_limit: 128m
+    command: ["python", "-m", "api.server"]
+    environment:
+      <<: *ledger-env
+      LEDGER_TOKEN: ${LEDGER_TOKEN}
+    ports:
+      - "127.0.0.1:8502:8502"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8502/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ledger-old:
+    profiles: ["old"]
+    build: ../../our-ledger
+    image: our-ledger:local
+    container_name: ledger-old
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    environment: *ledger-env
+    ports:
+      - "127.0.0.1:8503:8501"

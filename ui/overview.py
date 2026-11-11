@@ -235,6 +235,9 @@ if ctx:
         @st.dialog("✏️ 編輯這筆")
         def edit_dlg(rid: str):
             row = df[df["id"] == rid].iloc[0]
+            if row["type"] == "settle":
+                st.info("結清的紀錄請到新版記帳本修改或刪除。")
+                return
             e1, e2 = st.columns(2)
             person = e1.radio("付款人", [p["id"] for p in people],
                               index=[p["id"] for p in people].index(row["person"])
@@ -320,7 +323,7 @@ if ctx:
                                   f'{sign}<span class="cur">{sym(r.currency)}</span>'
                                   f'{r.amount:,.2f}</span>',
                                   unsafe_allow_html=True)
-                    split_txt = ("收入" if r.type == "income"
+                    split_txt = ("收入" if r.type == "income" else "結清" if r.type == "settle"
                                  else SPLIT_LABEL.get(r.split, r.split))
                     c[5].markdown(f'<span class="dtl-mut">{split_txt}</span>',
                                   unsafe_allow_html=True)

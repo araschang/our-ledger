@@ -27,7 +27,7 @@ CAT_EMOJI = {
     "家具家電": "🛋️", "交通": "🚗", "車貸保險": "🚙", "娛樂": "🎬",
     "美容": "💅", "衣服": "👗", "醫療": "🏥", "寵物": "🐾",
     "訂閱": "📺", "運動": "🏸", "其他": "📦",
-    "薪資": "💼", "獎金": "🎁", "投資": "📈",
+    "薪資": "💼", "獎金": "🎁", "投資": "📈", "結清": "🤝",
 }
 SPLIT_LABEL = {"half": "平分", "own": "自己", "advance": "代墊"}
 
@@ -259,7 +259,7 @@ def cat_detail(cdf: pd.DataFrame, category: str, names: dict, colors: dict,
         for r in sub.itertuples():
             note = (f'<br><span class="dtl-mut" style="font-size:0.78rem">'
                     f'{r.note}</span>' if r.note else "")
-            split_txt = ("收入" if r.type == "income"
+            split_txt = ("收入" if r.type == "income" else "結清" if r.type == "settle"
                          else SPLIT_LABEL.get(r.split, r.split))
             color = "#34A853" if r.type == "income" else "#1C1C1E"
             rows += (f'<tr><td class="mut">{r.date.strftime("%m/%d")}</td>'

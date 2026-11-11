@@ -4,9 +4,15 @@
 #   bash ~/our-ledger/deploy/switch.sh --rollback  換回舊版 Streamlit（資料不動）
 # 換之前會先備份資料庫（~/backups/ledger-before-v2-<時間>.dump）和 compose 設定。
 set -euo pipefail
-REPO="$HOME/our-ledger"
-HOMELAB="$HOME/homelab"
+# 下面幾個平常不用設；測試時（沙盒）才會換掉
+REPO="${REPO:-$HOME/our-ledger}"
+HOMELAB="${HOMELAB:-$HOME/homelab}"
+PG_CONTAINER="${PG_CONTAINER:-postgres}"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/backups}"
+WEB_PORT="${WEB_PORT:-8501}"
+API_PORT="${API_PORT:-8502}"
 COMPOSE="$HOMELAB/ledger/compose.yaml"
+NEW_COMPOSE="${NEW_COMPOSE:-$REPO/deploy/compose.yaml}"
 TS="$(date +%Y%m%d-%H%M%S)"
 cd "$HOMELAB"
 
@@ -25,22 +31,22 @@ if [ "${1:-}" = "--rollback" ]; then
   cp "$COMPOSE" "$COMPOSE.v2-$TS"
   cp "$last" "$COMPOSE"
   docker compose up -d --build ledger-web ledger-api
-  wait_ok http://127.0.0.1:8501/_stcore/health && wait_ok http://127.0.0.1:8502/healthz
+  wait_ok "http://127.0.0.1:$WEB_PORT/_stcore/health" && wait_ok "http://127.0.0.1:$API_PORT/healthz"
   echo "== 好了：舊版回來了（新版的 compose 存在 $COMPOSE.v2-$TS）"
   exit 0
 fi
 
-[ -f "$REPO/Dockerfile.app" ] && [ -f "$REPO/deploy/compose.yaml" ] \
+[ -f "$REPO/Dockerfile.app" ] && [ -f "$NEW_COMPOSE" ] \
   || { echo "$REPO 裡沒有新版（Dockerfile.app / deploy/compose.yaml）"; exit 1; }
 echo "== 程式版本：$(git -C "$REPO" log --oneline -1)"
 
 echo "== 1/6 備份資料庫"
-docker exec postgres pg_dump -U ledger -d ledger -Fc > "$HOME/backups/ledger-before-v2-$TS.dump"
-ls -la "$HOME/backups/ledger-before-v2-$TS.dump"
+docker exec "$PG_CONTAINER" pg_dump -U ledger -d ledger -Fc > "$BACKUP_DIR/ledger-before-v2-$TS.dump"
+ls -la "$BACKUP_DIR/ledger-before-v2-$TS.dump"
 
 echo "== 2/6 換 compose 設定（舊的存成 compose.yaml.bak-$TS）"
 cp "$COMPOSE" "$COMPOSE.bak-$TS"
-cp "$REPO/deploy/compose.yaml" "$COMPOSE"
+cp "$NEW_COMPOSE" "$COMPOSE"
 docker compose config -q
 
 echo "== 3/6 build 新版 image（這時舊版還在跑）"
@@ -51,12 +57,12 @@ docker compose run --rm --no-deps -T ledger-web python -m tools.lock_fx_history 
 
 echo "== 5/6 換上新版"
 docker compose up -d ledger-web ledger-api
-wait_ok http://127.0.0.1:8501/healthz
-wait_ok http://127.0.0.1:8502/healthz
+wait_ok "http://127.0.0.1:$WEB_PORT/healthz"
+wait_ok "http://127.0.0.1:$API_PORT/healthz"
 
 echo "== 6/6 檢查"
-curl -s http://127.0.0.1:8501/api/data | python3 -c \
+curl -s "http://127.0.0.1:$WEB_PORT/api/data" | python3 -c \
   'import json,sys; d=json.load(sys.stdin); print("   帳本", len(d["transactions"]), "筆；匯率", d["rates_source"])'
-curl -sf http://127.0.0.1:8501/_stcore/health >/dev/null && echo "   uptime-kuma 用的舊健康檢查網址也 ok"
-docker ps --format '   {{.Names}}  {{.Status}}' | grep ledger
+curl -sf "http://127.0.0.1:$WEB_PORT/_stcore/health" >/dev/null && echo "   uptime-kuma 用的舊健康檢查網址也 ok"
+docker ps --format '   {{.Names}}  {{.Status}}' | grep ledger || true
 echo "== 好了：手機打開原本的網址（:8011）就是新版。有問題：bash $REPO/deploy/switch.sh --rollback"

@@ -1,190 +1,295 @@
 @import "tailwindcss";
 
-/* 色票：圖表色照 dataviz 驗證過的那組（淺色/深色各自選過，不是自動反轉）。
-   背景/卡片/文字用 token，深色模式只換這裡。 */
+/* Apple（iOS HIG）系統色與層級。深色模式不是自動反轉，是 Apple 另外定的那一組。 */
 :root {
   color-scheme: light;
-  --page: #f4f3ef;
-  --card: #ffffff;
-  --card-2: #f0efeb;
-  --card-3: #e6e5e0;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #898781;
-  --line: #e7e6e1;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --primary: #0b0b0b;
-  --on-primary: #ffffff;
-  --link: #2a78d6;
-  --good: #006300;
-  --warn: #fab219;
-  --serious: #ec835a;
-  --bad: #d03b3b;
-  --bad-soft: #fbe9e8;
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
-  --series-6: #008300;
-  --series-7: #6250d6;
-  --series-other: #b9b8b1;
-  --shadow: 0 1px 2px rgba(20, 20, 20, 0.05), 0 4px 14px rgba(20, 20, 20, 0.05);
-  --ring: rgba(11, 11, 11, 0.1);
-  --toast: #1f1f1d;
+  --bg: #f2f2f7; /* systemGroupedBackground */
+  --card: #ffffff; /* secondarySystemGroupedBackground */
+  --card-2: #f2f2f7; /* tertiarySystemGroupedBackground */
+  --sheet: #ffffff;
+  --label: #000000;
+  --label-2: rgba(60, 60, 67, 0.6);
+  --label-3: rgba(60, 60, 67, 0.3);
+  --sep: rgba(60, 60, 67, 0.29);
+  --fill: rgba(120, 120, 128, 0.2);
+  --fill-2: rgba(120, 120, 128, 0.16);
+  --fill-3: rgba(118, 118, 128, 0.12);
+  --fill-4: rgba(116, 116, 128, 0.08);
+  --tint: #007aff;
+  --red: #ff3b30;
+  --orange: #ff9500;
+  --yellow: #ffcc00;
+  --green: #34c759;
+  --mint: #00c7be;
+  --teal: #30b0c7;
+  --cyan: #32ade6;
+  --blue: #007aff;
+  --indigo: #5856d6;
+  --purple: #af52de;
+  --pink: #ff2d55;
+  --brown: #a2845e;
+  --gray: #8e8e93;
+  --gray-3: #c7c7cc;
+  --gray-4: #d1d1d6;
+  --money-in: #248a3d; /* 收入的字：systemGreen 的易讀版 */
+  --material: rgba(249, 249, 249, 0.8);
+  --material-sep: rgba(0, 0, 0, 0.18);
   --thumb: #ffffff;
+  --hud: rgba(255, 255, 255, 0.9);
+  --hud-shadow: 0 8px 30px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --person-1: #007aff;
+  --person-2: #ff9500;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --s5: #e87ba4;
+  --s-other: #c7c7cc;
+  --stack-dim: 0.86;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --card: #1a1a19;
-  --card-2: #262624;
-  --card-3: #33332f;
-  --ink: #f0efec;
-  --ink-2: #c3c2b7;
-  --muted: #898781;
-  --line: #2c2c2a;
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --primary: #f0efec;
-  --on-primary: #0b0b0b;
-  --link: #3987e5;
-  --good: #0ca30c;
-  --bad-soft: #3a1f1e;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-other: #5b5a55;
-  --shadow: none;
-  --ring: rgba(255, 255, 255, 0.1);
-  --toast: #3a3a37;
-  --thumb: #46463f;
+  --bg: #000000;
+  --card: #1c1c1e;
+  --card-2: #2c2c2e;
+  --sheet: #1c1c1e;
+  --label: #ffffff;
+  --label-2: rgba(235, 235, 245, 0.6);
+  --label-3: rgba(235, 235, 245, 0.3);
+  --sep: rgba(84, 84, 88, 0.65);
+  --fill: rgba(120, 120, 128, 0.36);
+  --fill-2: rgba(120, 120, 128, 0.32);
+  --fill-3: rgba(118, 118, 128, 0.24);
+  --fill-4: rgba(118, 118, 128, 0.18);
+  --tint: #0a84ff;
+  --red: #ff453a;
+  --orange: #ff9f0a;
+  --yellow: #ffd60a;
+  --green: #30d158;
+  --mint: #63e6e2;
+  --teal: #40cbe0;
+  --cyan: #64d2ff;
+  --blue: #0a84ff;
+  --indigo: #5e5ce6;
+  --purple: #bf5af2;
+  --pink: #ff375f;
+  --brown: #ac8e68;
+  --gray: #8e8e93;
+  --gray-3: #48484a;
+  --gray-4: #3a3a3c;
+  --money-in: #30d158;
+  --material: rgba(30, 30, 30, 0.82);
+  --material-sep: rgba(255, 255, 255, 0.15);
+  --thumb: #636366;
+  --hud: rgba(52, 52, 54, 0.92);
+  --hud-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --person-1: #0a84ff;
+  --person-2: #d95926;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --s5: #d55181;
+  --s-other: #48484a;
+  --stack-dim: 0.6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d;
-    --card: #1a1a19;
-    --card-2: #262624;
-    --card-3: #33332f;
-    --ink: #f0efec;
-    --ink-2: #c3c2b7;
-    --muted: #898781;
-    --line: #2c2c2a;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --primary: #f0efec;
-    --on-primary: #0b0b0b;
-    --link: #3987e5;
-    --good: #0ca30c;
-    --bad-soft: #3a1f1e;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #008300;
-    --series-7: #9085e9;
-    --series-other: #5b5a55;
-    --shadow: none;
-    --ring: rgba(255, 255, 255, 0.1);
-    --toast: #3a3a37;
-    --thumb: #46463f;
+    --bg: #000000;
+    --card: #1c1c1e;
+    --card-2: #2c2c2e;
+    --sheet: #1c1c1e;
+    --label: #ffffff;
+    --label-2: rgba(235, 235, 245, 0.6);
+    --label-3: rgba(235, 235, 245, 0.3);
+    --sep: rgba(84, 84, 88, 0.65);
+    --fill: rgba(120, 120, 128, 0.36);
+    --fill-2: rgba(120, 120, 128, 0.32);
+    --fill-3: rgba(118, 118, 128, 0.24);
+    --fill-4: rgba(118, 118, 128, 0.18);
+    --tint: #0a84ff;
+    --red: #ff453a;
+    --orange: #ff9f0a;
+    --yellow: #ffd60a;
+    --green: #30d158;
+    --mint: #63e6e2;
+    --teal: #40cbe0;
+    --cyan: #64d2ff;
+    --blue: #0a84ff;
+    --indigo: #5e5ce6;
+    --purple: #bf5af2;
+    --pink: #ff375f;
+    --brown: #ac8e68;
+    --gray: #8e8e93;
+    --gray-3: #48484a;
+    --gray-4: #3a3a3c;
+    --money-in: #30d158;
+    --material: rgba(30, 30, 30, 0.82);
+    --material-sep: rgba(255, 255, 255, 0.15);
+    --thumb: #636366;
+    --hud: rgba(52, 52, 54, 0.92);
+    --hud-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    --person-1: #0a84ff;
+    --person-2: #d95926;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --s-other: #48484a;
+    --stack-dim: 0.6;
   }
 }
 
 @theme {
-  --color-page: var(--page);
+  --color-bg: var(--bg);
   --color-card: var(--card);
   --color-card-2: var(--card-2);
-  --color-card-3: var(--card-3);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-muted: var(--muted);
-  --color-line: var(--line);
-  --color-primary: var(--primary);
-  --color-on-primary: var(--on-primary);
-  --color-link: var(--link);
-  --color-good: var(--good);
-  --color-bad: var(--bad);
-  --color-bad-soft: var(--bad-soft);
-  --color-warn: var(--warn);
-  --font-sans: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --color-sheet: var(--sheet);
+  --color-label: var(--label);
+  --color-label-2: var(--label-2);
+  --color-label-3: var(--label-3);
+  --color-sep: var(--sep);
+  --color-fill: var(--fill);
+  --color-fill-2: var(--fill-2);
+  --color-fill-3: var(--fill-3);
+  --color-fill-4: var(--fill-4);
+  --color-tint: var(--tint);
+  --color-red: var(--red);
+  --color-orange: var(--orange);
+  --color-green: var(--green);
+  --color-gray: var(--gray);
+  --color-money-in: var(--money-in);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Helvetica Neue", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 
-/* app 殼：整頁不捲，各畫面自己捲（iOS 加到主畫面時才像 app） */
-html,
-body,
-#root {
-  height: 100%;
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--label);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+    overflow: hidden;
+  }
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  label {
+    touch-action: manipulation;
+  }
+  button {
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    color: inherit;
+  }
+  input,
+  textarea,
+  select {
+    font: inherit;
+    font-size: 17px; /* 小於 16px，iPhone 一點輸入框就整頁放大 */
+    color: inherit;
+  }
+  input::placeholder {
+    color: var(--label-3);
+  }
 }
-body {
-  margin: 0;
-  background: var(--page);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
+
+@layer components {
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  /* 金額用 SF 圓體（Apple Cash、健康 app 的數字）；其他裝置退回系統字 */
+  .rounded-num {
+    font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .material {
+    background: var(--material);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+  .hairline-b {
+    box-shadow: inset 0 -0.5px 0 var(--material-sep);
+  }
+  .hairline-t {
+    box-shadow: inset 0 0.5px 0 var(--material-sep);
+  }
+  /* iOS 列表：分隔線從文字開始的地方畫（不穿過圖示） */
+  .ios-rows > * + * {
+    position: relative;
+  }
+  .ios-rows > * + *::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--sep-inset, 16px);
+    height: 0.5px;
+    background: var(--sep);
+    z-index: 1;
+  }
+  .press {
+    transition: opacity 0.12s ease, background-color 0.15s ease, transform 0.1s ease;
+  }
+  .press:active {
+    opacity: 0.55;
+  }
+  .row-press:active {
+    background: var(--fill-4);
+  }
+  .key:active {
+    background: var(--fill-2);
+  }
+  .safe-b {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-t {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* 頁面卡片（page sheet）打開時，底下的 app 縮小、圓角、變暗，跟 iOS 一樣 */
+#app-shell {
+  transform-origin: 50% 0;
+  transition: transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.38s ease, filter 0.38s ease;
+}
+html.sheet-stack,
+html.sheet-stack body {
+  background: #000;
+}
+html.sheet-stack #app-shell {
+  transform: translateY(calc(env(safe-area-inset-top) + 2px)) scale(0.92);
+  border-radius: 12px;
   overflow: hidden;
-}
-button,
-[role="button"],
-a,
-input,
-select,
-label {
-  touch-action: manipulation;
-}
-button {
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-}
-input,
-textarea,
-select {
-  font-size: 16px; /* 小於 16px，iPhone 一點輸入框就整頁放大 */
-}
-.tnum {
-  font-variant-numeric: tabular-nums;
-}
-.card {
-  background: var(--card);
-  border-radius: 18px;
-  box-shadow: var(--shadow);
-  outline: 1px solid var(--ring);
-  outline-offset: -1px;
-}
-.scroll {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.press {
-  transition: transform 0.08s ease, background-color 0.15s ease, opacity 0.15s ease;
-}
-.press:active {
-  transform: scale(0.96);
-}
-.safe-b {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.safe-t {
-  padding-top: env(safe-area-inset-top);
+  filter: brightness(var(--stack-dim));
 }
 
 @keyframes sheet-in {
@@ -203,14 +308,22 @@ select {
     opacity: 1;
   }
 }
-@keyframes toast-in {
+@keyframes hud-in {
   from {
-    transform: translateY(12px);
+    transform: translateY(-24px) scale(0.92);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+@keyframes flash {
+  0% {
+    background: color-mix(in oklab, var(--tint) 16%, var(--card));
+  }
+  100% {
+    background: var(--card);
   }
 }
 @keyframes shake {
@@ -219,38 +332,34 @@ select {
     transform: translateX(0);
   }
   25% {
-    transform: translateX(-6px);
+    transform: translateX(-7px);
   }
   75% {
-    transform: translateX(6px);
-  }
-}
-@keyframes flash {
-  0% {
-    background: color-mix(in oklab, var(--link) 22%, var(--card));
-  }
-  100% {
-    background: var(--card);
+    transform: translateX(7px);
   }
 }
 .anim-sheet {
-  animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: sheet-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .anim-fade {
-  animation: fade-in 0.2s ease;
+  animation: fade-in 0.25s ease;
 }
-.anim-toast {
-  animation: toast-in 0.22s ease;
+.anim-hud {
+  animation: hud-in 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 .anim-flash {
   animation: flash 1.6s ease-out;
 }
+.anim-shake {
+  animation: shake 0.35s;
+}
 @media (prefers-reduced-motion: reduce) {
   .anim-sheet,
   .anim-fade,
-  .anim-toast,
+  .anim-hud,
   .anim-flash,
-  .press {
+  .anim-shake,
+  #app-shell {
     animation: none;
     transition: none;
   }

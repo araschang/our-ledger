@@ -1,7 +1,7 @@
-/** app 外框：底部分頁列（明細／總覽／＋／報表／設定）、記一筆畫面、第一次打開選「我是誰」。 */
+/** app 外框：毛玻璃分頁列（明細／總覽／＋／報表／設定）、記一筆卡片、第一次打開選「我是誰」。 */
 import { useEffect, useMemo, useState } from "react";
-import { Icon } from "./components/Icon";
-import { Sheet, ToastHost, toast } from "./components/ui";
+import { Icon, type IconName } from "./components/Icon";
+import { BigButton, Dot, HudHost, Sheet, toast } from "./components/ui";
 import { normalizeMeta } from "./lib/analytics";
 import { todayLocal } from "./lib/format";
 import { setPrefs, usePrefs } from "./lib/prefs";
@@ -13,7 +13,7 @@ import { ListScreen } from "./screens/ListScreen";
 import { Overview } from "./screens/Overview";
 import { Reports } from "./screens/Reports";
 import { Settings } from "./screens/Settings";
-import { SyncBadge } from "./screens/Shared";
+import { SyncButton } from "./screens/Shared";
 
 type Tab = "list" | "overview" | "reports" | "settings";
 
@@ -38,16 +38,15 @@ export default function App() {
   if (!snap.data) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-        <div className="text-5xl">💰</div>
+        <img src="/icons/icon.svg" alt="" className="h-16 w-16 rounded-[15px]" />
         {snap.error ? (
           <>
-            <div className="text-[17px] font-semibold">打不開記帳本</div>
-            <div className="text-[14px] text-ink-2">{snap.error}</div>
-            <button className="press mt-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-on-primary"
-              onClick={() => void store.refresh()}>再試一次</button>
+            <div className="text-[20px] font-semibold">打不開記帳本</div>
+            <div className="text-[15px] text-label-2">{snap.error}</div>
+            <div className="mt-2 w-48"><BigButton onClick={() => void store.refresh()}>再試一次</BigButton></div>
           </>
         ) : (
-          <div className="text-[15px] text-ink-2">讀取帳本中…</div>
+          <div className="text-[15px] text-label-2">讀取帳本中…</div>
         )}
       </div>
     );
@@ -64,63 +63,69 @@ export default function App() {
     setFlashId(id);
     setTimeout(() => setFlashId((f) => (f === id ? null : f)), 1800);
   };
-  const header = <SyncBadge />;
+  const trailing = <SyncButton />;
 
-  const tabs: { id: Tab | "add"; label: string; icon: "list" | "overview" | "plus" | "chart" | "settings" }[] = [
+  const tabs: { id: Tab | "add"; label: string; icon: IconName }[] = [
     { id: "list", label: "明細", icon: "list" },
-    { id: "overview", label: "總覽", icon: "overview" },
+    { id: "overview", label: "總覽", icon: "pie" },
     { id: "add", label: "記一筆", icon: "plus" },
     { id: "reports", label: "報表", icon: "chart" },
-    { id: "settings", label: "設定", icon: "settings" },
+    { id: "settings", label: "設定", icon: "gear" },
   ];
 
   return (
-    <div className="mx-auto flex h-full max-w-xl flex-col">
-      <main className="min-h-0 flex-1">
-        {tab === "list" && <ListScreen month={month} setMonth={setMonth} range={range} onEdit={edit} flashId={flashId} header={header} />}
-        {tab === "overview" && <Overview month={month} setMonth={setMonth} range={range} onEdit={edit} header={header} />}
-        {tab === "reports" && <Reports month={month} setMonth={setMonth} range={range} onEdit={edit} header={header} />}
-        {tab === "settings" && <Settings header={header} />}
-      </main>
+    <>
+      <div id="app-shell" className="relative mx-auto h-full max-w-xl bg-bg">
+        <main className="h-full">
+          {tab === "list" && <ListScreen month={month} setMonth={setMonth} range={range} onEdit={edit} flashId={flashId} trailing={trailing} />}
+          {tab === "overview" && <Overview month={month} setMonth={setMonth} range={range} onEdit={edit} trailing={trailing} />}
+          {tab === "reports" && <Reports month={month} setMonth={setMonth} range={range} onEdit={edit} trailing={trailing} />}
+          {tab === "settings" && <Settings trailing={trailing} />}
+        </main>
 
-      <nav className="safe-b fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[color-mix(in_oklab,var(--card)_92%,transparent)] backdrop-blur-xl">
-        <div className="mx-auto flex h-[58px] max-w-xl items-stretch">
-          {tabs.map((t) =>
-            t.id === "add" ? (
-              <div key={t.id} className="flex flex-1 items-center justify-center">
-                <button aria-label="記一筆" onClick={() => setEntry({ mode: "new" })}
-                  className="press flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
-                  <Icon name="plus" size={26} strokeWidth={2.4} />
+        <nav className="material hairline-t safe-b absolute inset-x-0 bottom-0 z-30">
+          <div className="flex h-[50px] items-stretch">
+            {tabs.map((t) =>
+              t.id === "add" ? (
+                <button key={t.id} aria-label="記一筆" onClick={() => setEntry({ mode: "new" })}
+                  className="press flex flex-1 items-center justify-center">
+                  <span className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-tint text-white">
+                    <Icon name="plus" size={22} strokeWidth={2.8} />
+                  </span>
                 </button>
-              </div>
-            ) : (
-              <button key={t.id} onClick={() => setTab(t.id as Tab)} aria-current={tab === t.id ? "page" : undefined}
-                className={cx("press flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px]",
-                  tab === t.id ? "font-semibold text-ink" : "text-muted")}>
-                <Icon name={t.icon} size={22} strokeWidth={tab === t.id ? 2.3 : 1.9} />
-                {t.label}
-              </button>
-            ))}
-        </div>
-      </nav>
+              ) : (
+                <button key={t.id} onClick={() => setTab(t.id as Tab)} aria-current={tab === t.id ? "page" : undefined}
+                  className={cx("flex flex-1 flex-col items-center justify-center gap-[3px] pt-1 text-[10px] font-medium",
+                    tab === t.id ? "text-tint" : "text-gray")}>
+                  <Icon name={t.icon} size={24} strokeWidth={tab === t.id ? 2.2 : 1.8} />
+                  {t.label}
+                </button>
+              ))}
+          </div>
+        </nav>
+      </div>
 
       {entry && !needMe && <Entry key={entry.mode === "edit" ? entry.txn.id : "new"} target={entry}
         onClose={() => setEntry(null)} onSaved={saved} />}
 
-      <Sheet open={needMe} onClose={() => {}} dismissible={false} title="這支手機是誰的？">
-        <div className="pb-1 text-[14px] text-ink-2">記帳時會預設是你付的。之後可以在「設定」改。</div>
-        <div className="grid grid-cols-2 gap-3 py-3">
+      <Sheet open={needMe} onClose={() => {}} dismissible={false} title="歡迎">
+        <div className="flex flex-col items-center px-2 pt-2 text-center">
+          <img src="/icons/icon.svg" alt="" className="h-16 w-16 rounded-[15px]" />
+          <div className="mt-3 text-[22px] font-bold">這支手機是誰的？</div>
+          <div className="mt-1 text-[15px] text-label-2">記帳時會預設是你付的，之後可以在「設定」改。</div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 pb-2">
           {meta.people.map((p) => (
             <button key={p.id} onClick={() => setPrefs({ me: p.id })}
-              className="press flex h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-card-2 text-[18px] font-semibold">
-              <span className="h-4 w-4 rounded-full" style={{ background: personColor(meta, p.id) }} />
+              className="press flex h-[92px] flex-col items-center justify-center gap-2 rounded-[14px] bg-fill-3 text-[19px] font-semibold">
+              <Dot color={personColor(meta, p.id)} size={14} />
               {p.name}
             </button>
           ))}
         </div>
       </Sheet>
 
-      <ToastHost bottom={entry ? 300 : 72} />
-    </div>
+      <HudHost />
+    </>
   );
 }

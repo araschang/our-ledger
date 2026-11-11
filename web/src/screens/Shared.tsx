@@ -1,13 +1,13 @@
-/** 幾個畫面共用的抽屜：分類明細、結清、同步狀態。 */
+/** 幾個畫面共用的卡片：分類明細、結清（學 Apple Cash）、同步狀態。 */
 import { useState } from "react";
 import { Icon } from "../components/Icon";
-import { TxnRow } from "../components/TxnRow";
-import { Sheet, toast } from "../components/ui";
+import { ROW_INSET, TxnRow } from "../components/TxnRow";
+import { BigButton, CatIcon, Dot, NavButton, Sheet, toast } from "../components/ui";
 import { normalizeMeta, type Settlement } from "../lib/analytics";
 import { money, monthTitle, timeAgo, todayLocal } from "../lib/format";
 import { store, useStore } from "../lib/store";
 import type { Row, Txn } from "../lib/types";
-import { catEmoji, cx, nameOf } from "../lib/ui";
+import { nameOf, personColor } from "../lib/ui";
 
 export function CategoryDetailSheet({ open, onClose, category, month, rows, who, type, onEdit }: {
   open: boolean;
@@ -26,28 +26,28 @@ export function CategoryDetailSheet({ open, onClose, category, month, rows, who,
     .sort((a, b) => b.date.localeCompare(a.date) || b.created.localeCompare(a.created));
   const total = sub.reduce((s, r) => s + r.amount, 0);
   return (
-    <Sheet open={open} onClose={onClose} tall={sub.length > 6}
-      title={category ? `${catEmoji(category)} ${category}　${month ? monthTitle(month) : "全部期間"}` : ""}>
-      <div className="tnum mb-2 flex gap-4 text-[14px] text-ink-2">
-        <span>{sub.length} 筆</span>
-        <span>合計 <b className="text-ink">{money(total)}</b></span>
-        {sub.length > 0 && <span>平均 {money(total / sub.length)}</span>}
-      </div>
-      {who && (
-        <div className="mb-2 rounded-xl bg-card-2 px-3 py-2 text-[13px] text-ink-2">
-          只算 {nameOf(meta, who)} 自己負擔的部分（平分的算一半、別人幫忙墊的算全額）
+    <Sheet open={open} onClose={onClose} title={category ?? ""}>
+      {category && (
+        <div className="flex flex-col items-center pt-1 pb-4">
+          <CatIcon category={category} size={52} />
+          <div className="rounded-num mt-2 text-[34px] leading-[40px] font-bold">{money(total)}</div>
+          <div className="text-[15px] text-label-2">
+            {month ? monthTitle(month) : "全部期間"} · {sub.length} 筆{sub.length > 0 && ` · 平均 ${money(total / sub.length)}`}
+          </div>
+          {who && <div className="mt-1 text-[13px] text-label-2">只算 {nameOf(meta, who)} 自己負擔的部分</div>}
         </div>
       )}
-      <div className="-mx-4 divide-y divide-line">
+      <div className="ios-rows overflow-hidden rounded-[12px] bg-card-2" style={{ "--sep-inset": `${ROW_INSET}px` } as React.CSSProperties}>
         {sub.map((r) => (
-          <TxnRow key={r.id} txn={r.txn} meta={meta} amount={r.amount} showDate={`${Number(r.date.slice(5, 7))}/${Number(r.date.slice(8, 10))}`}
+          <TxnRow key={r.id} txn={r.txn} meta={meta} amount={r.amount}
+            showDate={`${Number(r.date.slice(5, 7))}/${Number(r.date.slice(8, 10))}`}
             onTap={() => {
               onClose();
               onEdit(r.txn);
             }} />
         ))}
       </div>
-      {sub.length === 0 && <div className="py-8 text-center text-muted">這個範圍沒有記錄</div>}
+      {sub.length === 0 && <div className="py-8 text-center text-label-2">這個範圍沒有記錄</div>}
     </Sheet>
   );
 }
@@ -63,65 +63,66 @@ export function SettleSheet({ open, onClose, s }: { open: boolean; onClose: () =
   return (
     <Sheet open={open} onClose={onClose} title="結清"
       footer={
-        <button disabled={!ok}
-          className="press h-12 w-full rounded-xl bg-primary text-[16px] font-semibold text-on-primary disabled:opacity-40"
-          onClick={() => {
-            const id = store.add({ date: todayLocal(), person: s.debtor!, type: "settle", category: "結清",
-              item: "結清", amount: Math.round(value * 100) / 100, note: note.trim(), currency: "CAD", split: "own" });
-            toast(`記下結清 ${money(value)}`, { action: { label: "復原", fn: () => store.remove(id) } });
-            setAmt("");
-            setNote("");
-            onClose();
-          }}>
-          記下：{nameOf(meta, s.debtor)} 付給 {nameOf(meta, s.creditor)} {ok ? money(value) : ""}
-        </button>
+        <BigButton disabled={!ok} onClick={() => {
+          const id = store.add({ date: todayLocal(), person: s.debtor!, type: "settle", category: "結清",
+            item: "結清", amount: Math.round(value * 100) / 100, note: note.trim(), currency: "CAD", split: "own" });
+          toast(`已記下結清　${money(value)}`, { action: { label: "復原", fn: () => store.remove(id) } });
+          setAmt("");
+          setNote("");
+          onClose();
+        }}>
+          記下結清
+        </BigButton>
       }>
-      <div className="text-[15px] leading-relaxed text-ink-2">
-        {nameOf(meta, s.debtor)} 把錢轉給 {nameOf(meta, s.creditor)} 之後，在這裡記一筆，
-        分帳就會歸零（或扣掉轉的金額）。這筆不算任何人的支出。
+      <div className="flex flex-col items-center pt-2">
+        <div className="flex items-center gap-2 text-[15px] text-label-2">
+          <Dot color={personColor(meta, s.debtor)} />{nameOf(meta, s.debtor)}
+          <Icon name="right" size={16} strokeWidth={2.4} />
+          <Dot color={personColor(meta, s.creditor)} />{nameOf(meta, s.creditor)}
+        </div>
+        <div className="rounded-num mt-2 flex items-baseline font-semibold">
+          <span className="mr-1 text-[28px] text-label-3">$</span>
+          <input inputMode="decimal" value={amt} placeholder={s.owed.toFixed(2)} aria-label="結清金額"
+            onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ""))}
+            style={{ width: `${Math.max(2, (amt || s.owed.toFixed(2)).length) + 0.3}ch` }}
+            className="rounded-num tnum bg-transparent text-left text-[48px] leading-[56px] outline-none placeholder:text-label" />
+        </div>
+        <div className="mt-1 text-center text-[13px] leading-[18px] text-label-2">
+          {nameOf(meta, s.debtor)} 轉帳給 {nameOf(meta, s.creditor)} 之後記一筆，分帳就會扣掉。<br />預設全部結清；這筆不算任何人的支出。
+        </div>
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註（例：e-Transfer）" maxLength={900}
+          className="mt-4 h-11 w-full rounded-[10px] bg-fill-3 px-3 outline-none" />
       </div>
-      <label className="mt-4 block text-[13px] text-muted">金額（預設全部結清）</label>
-      <div className="mt-1 flex h-12 items-center gap-1 rounded-xl bg-card-2 px-3">
-        <span className="text-muted">$</span>
-        <input inputMode="decimal" value={amt} placeholder={s.owed.toFixed(2)}
-          onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ""))}
-          className="tnum min-w-0 flex-1 bg-transparent text-[18px] font-semibold outline-none placeholder:text-ink" />
-      </div>
-      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註（例：e-Transfer）" maxLength={900}
-        className="mt-2 h-11 w-full rounded-xl bg-card-2 px-3 text-[16px] outline-none placeholder:text-muted" />
     </Sheet>
   );
 }
 
-/** 標題列右上角的小狀態：待上傳幾筆、離線、同步中。點了立刻同步。 */
-export function SyncBadge() {
+/** 頂欄右上角的同步狀態：平常是一個小圖示；有待上傳顯示數字、離線顯示雲。點了看詳情、立刻同步。 */
+export function SyncButton() {
   const snap = useStore();
   const [open, setOpen] = useState(false);
   const state = snap.pending > 0 ? "pending" : snap.offline ? "offline" : "ok";
   return (
     <>
-      <button aria-label="同步狀態" onClick={() => setOpen(true)}
-        className={cx("press flex h-8 items-center gap-1 rounded-full px-2 text-[12px]",
-          state === "pending" ? "bg-[color-mix(in_oklab,var(--warn)_25%,var(--card))] text-ink"
-            : state === "offline" ? "bg-card-2 text-ink-2" : "text-muted")}>
-        {state === "pending" && <><Icon name="clock" size={14} />{snap.pending}</>}
-        {state === "offline" && <><Icon name="cloudOff" size={14} />離線</>}
-        {state === "ok" && <Icon name="refresh" size={17} className={snap.syncing ? "animate-spin" : ""} />}
-      </button>
+      <NavButton label="同步狀態" onClick={() => setOpen(true)}
+        icon={state === "offline" ? "cloudOff" : state === "pending" ? "clock" : "refresh"}
+        badge={state === "pending" ? (
+          <span className="absolute top-1.5 right-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-orange px-1 text-[11px] font-semibold text-white">
+            {snap.pending}
+          </span>
+        ) : undefined} />
       <Sheet open={open} onClose={() => setOpen(false)} title="同步">
-        <div className="flex flex-col gap-2 pb-2 text-[15px] text-ink-2">
-          <div>上次跟伺服器對過：{snap.lastSync ? timeAgo(snap.lastSync) : "還沒有"}</div>
-          <div>待上傳：{snap.pending} 筆{snap.pending > 0 && "（連上網會自動送出）"}</div>
-          {snap.offline && <div>現在連不上記帳本：手機要開著 Tailscale。</div>}
-          <button className="press mt-2 h-11 rounded-xl bg-primary font-semibold text-on-primary"
-            onClick={() => {
-              void store.flush();
-              void store.refresh();
-              setOpen(false);
-            }}>
-            立刻同步
-          </button>
+        <div className="ios-rows overflow-hidden rounded-[12px] bg-card-2">
+          <div className="flex h-11 items-center px-4"><span className="flex-1">上次跟伺服器對過</span><span className="text-label-2">{snap.lastSync ? timeAgo(snap.lastSync) : "還沒有"}</span></div>
+          <div className="flex h-11 items-center px-4"><span className="flex-1">待上傳</span><span className="text-label-2">{snap.pending} 筆</span></div>
+          <div className="flex h-11 items-center px-4"><span className="flex-1">連線</span><span className="text-label-2">{snap.offline ? "連不上（要開 Tailscale）" : "正常"}</span></div>
         </div>
+        <div className="px-4 pt-2 text-[13px] text-label-2">記帳會先存在手機上，連上網自動送出，不會重複。</div>
+        <BigButton className="mt-4" onClick={() => {
+          void store.flush();
+          void store.refresh();
+          setOpen(false);
+        }}>立刻同步</BigButton>
       </Sheet>
     </>
   );

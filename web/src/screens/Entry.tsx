@@ -1,17 +1,18 @@
 /**
- * 記一筆／修改：打開就是數字鍵盤，點分類 → （品項可不填）→ 記下來。
+ * 記一筆／修改（iOS 頁面卡片，金額區學 Apple Cash）：
+ * 打開就是數字鍵盤 → 點分類 →（品項可不填）→ 記下來。
  * 付款人預設這支手機的主人；平分/自己/代墊記住「這個人上次在這個分類怎麼選」；
  * 選了分類會列出最近常記的品項，點一下就填好。
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
-import { Segmented, Sheet, toast } from "../components/ui";
+import { ActionSheet, BigButton, CatIcon, Dot, Segmented, Sheet, TextButton, toast } from "../components/ui";
 import { normalizeMeta } from "../lib/analytics";
 import { addDays, CURRENCY_SYMBOL, dayShort, money, todayLocal } from "../lib/format";
 import { getPrefs } from "../lib/prefs";
 import { store, type TxnInput, useStore } from "../lib/store";
 import type { Txn } from "../lib/types";
-import { catEmoji, cx, nameOf, otherOf, personColor } from "../lib/ui";
+import { cx, nameOf, otherOf, personColor } from "../lib/ui";
 
 const CURRENCIES = ["CAD", "USD", "TWD"];
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
@@ -101,6 +102,7 @@ export function Entry({ target, onClose, onSaved }: {
   const amount = Number(amt || "0");
   const rate = data.rates?.[currency] ?? 1;
   const other = otherOf(meta, person);
+  const ready = amount > 0 && (isSettle || !!category);
 
   const press = (k: string) => {
     setAmt((s) => {
@@ -114,19 +116,15 @@ export function Entry({ target, onClose, onSaved }: {
     });
   };
 
+  const nudge = (what: "amt" | "cat", msg: string) => {
+    setShake(what);
+    setTimeout(() => setShake(null), 400);
+    toast(msg, { tone: "error" });
+  };
+
   const save = () => {
-    if (!(amount > 0)) {
-      setShake("amt");
-      setTimeout(() => setShake(null), 400);
-      toast("先輸入金額");
-      return;
-    }
-    if (!isSettle && !category) {
-      setShake("cat");
-      setTimeout(() => setShake(null), 400);
-      toast("選一個分類");
-      return;
-    }
+    if (!(amount > 0)) return nudge("amt", "先輸入金額");
+    if (!isSettle && !category) return nudge("cat", "選一個分類");
     const payload: TxnInput = {
       date, person, type, category: isSettle ? "結清" : category!, item: item.trim(),
       amount: Math.round(amount * 100) / 100, note: note.trim(), currency,
@@ -140,11 +138,11 @@ export function Entry({ target, onClose, onSaved }: {
         currency: editing.currency, split: editing.split, source: editing.source,
         location: editing.location ?? "" };
       store.update(editing.id, payload);
-      toast(`改好了：${label}`, { action: { label: "復原", fn: () => store.update(editing.id, before) } });
+      toast(`已更新　${label}`, { action: { label: "復原", fn: () => store.update(editing.id, before) } });
       onSaved(editing.id);
     } else {
       const id = store.add(payload);
-      toast(`記好了：${label}`, { action: { label: "復原", fn: () => store.remove(id) } });
+      toast(`已記下　${label}`, { action: { label: "復原", fn: () => store.remove(id) } });
       onSaved(id);
     }
   };
@@ -153,12 +151,11 @@ export function Entry({ target, onClose, onSaved }: {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (/^[0-9]$/.test(e.key)) press(e.key);
       else if (e.key === ".") press(".");
       else if (e.key === "Backspace") press("⌫");
       else if (e.key === "Enter") save();
-      else if (e.key === "Escape") onClose();
       else return;
       e.preventDefault();
     };
@@ -167,200 +164,168 @@ export function Entry({ target, onClose, onSaved }: {
   });
 
   const dateLabel = date === today ? "今天" : date === addDays(today, -1) ? "昨天" : dayShort(date);
+  const focusProps = {
+    onFocus: () => setTyping(true),
+    onBlur: () => setTimeout(() => setTyping(false), 80),
+  };
 
   return (
-    <div className="anim-sheet fixed inset-0 z-40 flex flex-col bg-page">
-      <div className="mx-auto flex h-full w-full max-w-xl flex-col">
-        {/* 標題列 */}
-        <div className="safe-t shrink-0">
-          <div className="flex h-12 items-center gap-1 px-2">
-            <button className="press rounded-full p-2.5 text-ink-2" onClick={onClose} aria-label="關閉">
-              <Icon name="x" />
-            </button>
-            <div className="text-[17px] font-semibold">
-              {editing ? (isSettle ? "修改結清" : "修改這筆") : "記一筆"}
-            </div>
-            <div className="ml-auto flex items-center gap-1">
-              <label className="press relative flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[14px] font-medium shadow-[var(--shadow)]">
-                <Icon name="calendar" size={16} className="text-ink-2" />
-                {dateLabel}
-                <input type="date" value={date} max="2099-12-31" aria-label="日期"
-                  onChange={(e) => e.target.value && setDate(e.target.value)}
-                  onClick={(e) => {
-                    try {
-                      (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                    } catch {
-                      /* iOS 點了本來就會跳出選日期 */
-                    }
-                  }}
-                  className="absolute inset-0 opacity-0" />
-              </label>
-              {editing && (
-                <button className="press rounded-full p-2.5 text-bad" onClick={() => setConfirmDel(true)} aria-label="刪除">
-                  <Icon name="trash" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 上半：可捲動 */}
-        <div className="scroll min-h-0 flex-1 px-4 pb-3">
-          <div className="flex items-center gap-2 pt-1">
-            {!isSettle ? (
-              <Segmented size="sm" className="w-[132px] shrink-0" ariaLabel="類型" value={type}
-                onChange={(v) => {
-                  setType(v);
-                  if (!editing || v !== editing.type) setCategory(null);
-                }}
-                options={[{ value: "expense", label: "支出" }, { value: "income", label: "收入" }]} />
-            ) : (
-              <div className="rounded-lg bg-card-2 px-3 py-1.5 text-[13px] text-ink-2">🤝 結清</div>
-            )}
-            <Segmented size="sm" className="ml-auto min-w-0 flex-1" ariaLabel={isSettle ? "誰付給對方" : "誰付的"}
-              value={person} onChange={setPerson}
-              options={meta.people.map((p) => ({ value: p.id, label: (
-                <><span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: personColor(meta, p.id) }} />{p.name}</>
-              ) }))} />
-          </div>
-
-          {/* 金額 */}
-          <div className={cx("mt-3 flex items-end gap-2 rounded-2xl bg-card px-4 py-3 shadow-[var(--shadow)]",
-            shake === "amt" && "animate-[shake_0.35s]")}>
-            <button className="press mb-1 shrink-0 rounded-lg bg-card-2 px-2 py-1 text-[13px] font-semibold text-ink-2"
-              onClick={() => setCurrency(CURRENCIES[(CURRENCIES.indexOf(currency) + 1) % CURRENCIES.length])}
-              aria-label="切換幣別">
-              {currency}
-            </button>
-            <div className="min-w-0 flex-1 text-right">
-              <div className={cx("truncate text-[40px] leading-none font-semibold tracking-tight", !amt && "text-muted")}>
-                <span className="mr-1 text-[24px] font-medium text-muted">{CURRENCY_SYMBOL[currency] ?? currency}</span>
-                {amountText(amt)}
-              </div>
-              {currency !== "CAD" && (
-                <div className="tnum mt-1 text-[13px] text-muted">≈ {money(amount * rate)} CAD（記下時換算）</div>
-              )}
-            </div>
-          </div>
-
-          {/* 分類 */}
-          {!isSettle && (
-            <div className={cx("mt-3 grid grid-cols-6 gap-1.5", shake === "cat" && "animate-[shake_0.35s]")}
-              role="radiogroup" aria-label="分類">
-              {cats.map((c) => (
-                <button key={c} role="radio" aria-checked={c === category}
-                  onClick={() => {
-                    setCategory(c);
-                    if (!editing) setItem("");
-                  }}
-                  className={cx("press flex h-[58px] flex-col items-center justify-center gap-0.5 rounded-xl px-0.5",
-                    c === category ? "bg-primary text-on-primary" : "bg-card text-ink shadow-[var(--shadow)]")}>
-                  <span className="text-[21px] leading-none">{catEmoji(c)}</span>
-                  <span className={cx("w-full truncate text-center leading-tight", c.length > 3 ? "text-[10.5px]" : "text-[12px]")}>{c}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* 品項＋常用 */}
-          <div className="mt-3 flex items-center gap-2">
-            <input ref={itemRef} value={item} onChange={(e) => setItem(e.target.value)}
-              onFocus={() => setTyping(true)} onBlur={() => setTimeout(() => setTyping(false), 80)}
-              placeholder={isSettle ? "說明（可不填）" : "品項（可不填）"} enterKeyHint="done" maxLength={200}
-              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              className="h-11 min-w-0 flex-1 rounded-xl bg-card px-3.5 text-[16px] shadow-[var(--shadow)] outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--link)]" />
-            <button className={cx("press flex h-11 shrink-0 items-center gap-1 rounded-xl px-3 text-[14px]",
-              showNote || note ? "bg-card-3 text-ink" : "bg-card text-ink-2 shadow-[var(--shadow)]")}
-              onClick={() => setShowNote((s) => !s)} aria-expanded={showNote}>
-              <Icon name="note" size={16} />備註
-            </button>
-          </div>
-          {suggestions.length > 0 && (
-            <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
-              {suggestions.map((s) => (
-                <button key={s} onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setItem(s);
-                    itemRef.current?.blur();
-                  }}
-                  className={cx("press h-8 shrink-0 rounded-full px-3 text-[14px]",
-                    s === item ? "bg-primary text-on-primary" : "bg-card-2 text-ink")}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-          {showNote && (
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註" maxLength={900}
-              onFocus={() => setTyping(true)} onBlur={() => setTimeout(() => setTyping(false), 80)}
-              enterKeyHint="done" onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              className="mt-2 h-11 w-full rounded-xl bg-card px-3.5 text-[16px] shadow-[var(--shadow)] outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--link)]" />
-          )}
-
-          {/* 分法 */}
-          {type === "expense" && (
-            <div className="mt-3">
-              <Segmented ariaLabel="這筆怎麼算" value={split}
-                onChange={(v) => {
-                  setSplit(v);
-                  setSplitTouched(true);
-                }}
-                options={[
-                  { value: "half", label: "👫 平分" },
-                  { value: "own", label: `🙋 ${nameOf(meta, person)}自己` },
-                  { value: "advance", label: `🤝 幫${nameOf(meta, other)}墊` },
-                ]} />
-              <div className="mt-1.5 px-1 text-[12px] text-muted">
-                {split === "half" ? `兩人各出一半：${nameOf(meta, other)} 要還 ${money((amount * rate) / 2)}`
-                  : split === "own" ? `只算 ${nameOf(meta, person)} 的，不進分帳`
-                    : `幫 ${nameOf(meta, other)} 付的，${nameOf(meta, other)} 要還全額 ${money(amount * rate)}`}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 數字鍵盤 */}
-        {!typing && (
-          <div className="safe-b shrink-0 border-t border-line bg-card-2 px-2 pt-2">
-            <div className="grid grid-cols-[1fr_1fr_1fr_1.15fr] gap-1.5 pb-2">
-              <div className="col-span-3 grid grid-cols-3 gap-1.5">
-                {KEYS.map((k) => (
-                  <button key={k} onClick={() => press(k)} aria-label={k === "⌫" ? "刪掉一位" : k}
-                    className="press flex h-[50px] items-center justify-center rounded-xl bg-card text-[23px] font-medium shadow-[0_1px_0_rgba(0,0,0,0.08)] active:bg-card-3">
-                    {k === "⌫" ? <Icon name="backspace" size={24} /> : k}
-                  </button>
-                ))}
-              </div>
-              <button onClick={save}
-                className={cx("press flex flex-col items-center justify-center gap-1 rounded-xl text-[17px] font-semibold",
-                  amount > 0 && (category || isSettle) ? "bg-primary text-on-primary" : "bg-card-3 text-muted")}>
-                <Icon name="check" size={26} strokeWidth={2.4} />
-                {editing ? "儲存" : "記下來"}
+    <Sheet open page onClose={onClose}
+      left={<TextButton onClick={onClose}>取消</TextButton>}
+      title={isSettle ? "修改結清" : (
+        <Segmented className="w-[150px]" ariaLabel="類型" value={type}
+          onChange={(v) => {
+            setType(v);
+            if (!editing || v !== editing.type) setCategory(null);
+          }}
+          options={[{ value: "expense", label: "支出" }, { value: "income", label: "收入" }]} />
+      )}
+      right={
+        <label className="press relative flex h-8 items-center gap-1 rounded-full bg-fill-3 px-3 text-[15px] font-medium text-tint">
+          <Icon name="calendar" size={15} strokeWidth={2.2} />
+          {dateLabel}
+          <input type="date" value={date} max="2099-12-31" aria-label="日期"
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+            onClick={(e) => {
+              try {
+                (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+              } catch {
+                /* iOS 點了本來就會跳出選日期 */
+              }
+            }}
+            className="absolute inset-0 opacity-0" />
+        </label>
+      }
+      footer={!typing && (
+        <div>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-1">
+            {KEYS.map((k) => (
+              <button key={k} onClick={() => press(k)} aria-label={k === "⌫" ? "刪掉一位" : k}
+                className="key rounded-num flex h-[46px] items-center justify-center rounded-[12px] text-[28px] font-medium">
+                {k === "⌫" ? <Icon name="backspace" size={26} strokeWidth={1.8} /> : k}
               </button>
-            </div>
+            ))}
           </div>
+          <BigButton className={cx("mt-2", !ready && "opacity-40")} onClick={save}>
+            {editing ? "儲存" : "記下來"}
+          </BigButton>
+        </div>
+      )}
+    >
+      {/* 金額 */}
+      <div className={cx("flex flex-col items-center pt-1", shake === "amt" && "anim-shake")}>
+        <div className="rounded-num flex max-w-full items-baseline font-semibold">
+          <span className="mr-1 text-[30px] text-label-3">{CURRENCY_SYMBOL[currency] ?? currency}</span>
+          <span className={cx("truncate text-[56px] leading-[62px] tracking-tight", !amt && "text-label-3")}>{amountText(amt)}</span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-2">
+          <button className="press flex h-8 items-center gap-1.5 rounded-full bg-fill-3 px-3 text-[15px] font-medium"
+            onClick={() => setPerson(other)} aria-label="換付款人">
+            <Dot color={personColor(meta, person)} />
+            {isSettle ? `${nameOf(meta, person)} 付給 ${nameOf(meta, other)}` : `${nameOf(meta, person)} 付`}
+            <Icon name="swap" size={14} strokeWidth={2.4} className="text-label-2" />
+          </button>
+          <button className="press flex h-8 items-center gap-1 rounded-full bg-fill-3 px-3 text-[15px] font-medium"
+            onClick={() => setCurrency(CURRENCIES[(CURRENCIES.indexOf(currency) + 1) % CURRENCIES.length])}
+            aria-label="切換幣別">
+            {currency}
+            <Icon name="updown" size={13} strokeWidth={2.6} className="text-label-2" />
+          </button>
+        </div>
+        {currency !== "CAD" && (
+          <div className="rounded-num tnum mt-1 text-[13px] text-label-2">≈ {money(amount * rate)} CAD（記下時換算）</div>
         )}
       </div>
 
-      <Sheet open={confirmDel} onClose={() => setConfirmDel(false)} title="刪除這筆？">
-        <div className="pb-2 text-[15px] text-ink-2">
-          {editing && `${dayShort(editing.date)}　${editing.item || editing.category}　${money(editing.amount)}`}
+      {/* 分類 */}
+      {!isSettle && (
+        <div className={cx("mt-4 grid grid-cols-6 gap-y-2.5", shake === "cat" && "anim-shake")} role="radiogroup" aria-label="分類">
+          {cats.map((c) => (
+            <button key={c} role="radio" aria-checked={c === category}
+              onClick={() => {
+                setCategory(c);
+                if (!editing) setItem("");
+              }}
+              className="flex flex-col items-center gap-1 active:opacity-60">
+              <CatIcon category={c} size={40} selected={c === category} />
+              <span className={cx("w-full truncate px-0.5 text-center text-[11px] leading-[13px]",
+                c === category ? "font-semibold text-tint" : "text-label-2")}>{c}</span>
+            </button>
+          ))}
         </div>
-        <div className="grid grid-cols-2 gap-2 pt-2">
-          <button className="press h-12 rounded-xl bg-card-2 font-medium" onClick={() => setConfirmDel(false)}>取消</button>
-          <button className="press h-12 rounded-xl bg-bad font-semibold text-white"
-            onClick={() => {
-              if (!editing) return;
-              const backup = store.remove(editing.id);
-              setConfirmDel(false);
-              toast("刪掉了", { action: backup ? { label: "復原", fn: () => store.restore(backup) } : undefined });
-              onClose();
-            }}>
-            刪除
-          </button>
+      )}
+
+      {/* 品項＋常用 */}
+      <div className="mt-4 flex items-center gap-2">
+        <input ref={itemRef} value={item} onChange={(e) => setItem(e.target.value)} {...focusProps}
+          placeholder={isSettle ? "說明（可不填）" : "品項（可不填）"} enterKeyHint="done" maxLength={200}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          className="h-10 min-w-0 flex-1 rounded-[10px] bg-fill-3 px-3 outline-none" />
+        <button className={cx("press flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
+          showNote || note ? "bg-tint text-white" : "bg-fill-3 text-tint")}
+          onClick={() => setShowNote((s) => !s)} aria-expanded={showNote} aria-label="備註">
+          <Icon name="note" size={18} />
+        </button>
+      </div>
+      {suggestions.length > 0 && (
+        <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
+          {suggestions.map((s) => (
+            <button key={s} onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setItem(s);
+                itemRef.current?.blur();
+              }}
+              className={cx("press h-[30px] shrink-0 rounded-full px-3 text-[15px]",
+                s === item ? "bg-tint text-white" : "bg-fill-3")}>
+              {s}
+            </button>
+          ))}
         </div>
-      </Sheet>
-    </div>
+      )}
+      {showNote && (
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註" maxLength={900} {...focusProps}
+          enterKeyHint="done" onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          className="mt-2 h-10 w-full rounded-[10px] bg-fill-3 px-3 outline-none" />
+      )}
+
+      {/* 分法 */}
+      {type === "expense" && (
+        <div className="mt-4">
+          <Segmented ariaLabel="這筆怎麼算" value={split}
+            onChange={(v) => {
+              setSplit(v);
+              setSplitTouched(true);
+            }}
+            options={[
+              { value: "half", label: "平分" },
+              { value: "own", label: `${nameOf(meta, person)}自己` },
+              { value: "advance", label: `幫${nameOf(meta, other)}墊` },
+            ]} />
+          <div className="rounded-num mt-1.5 px-1 text-center text-[13px] text-label-2">
+            {split === "half" ? `兩人各一半，${nameOf(meta, other)} 要還 ${money((amount * rate) / 2)}`
+              : split === "own" ? `只算 ${nameOf(meta, person)} 的，不進分帳`
+                : `幫 ${nameOf(meta, other)} 付的，${nameOf(meta, other)} 要還 ${money(amount * rate)}`}
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="mt-5 flex justify-center">
+          <TextButton tone="red" onClick={() => setConfirmDel(true)}>刪除這筆</TextButton>
+        </div>
+      )}
+
+      <ActionSheet open={confirmDel} onClose={() => setConfirmDel(false)}
+        message={editing && `${dayShort(editing.date)}　${editing.item || editing.category}　${money(editing.amount)}`}
+        actions={[{
+          label: "刪除這筆", destructive: true, onClick: () => {
+            if (!editing) return;
+            const backup = store.remove(editing.id);
+            setConfirmDel(false);
+            toast("已刪除", { action: backup ? { label: "復原", fn: () => store.restore(backup) } : undefined });
+            onClose();
+          },
+        }]} />
+    </Sheet>
   );
 }
-

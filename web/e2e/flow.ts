@@ -111,7 +111,7 @@ await step("overview+settle", async () => {
   await b.shot(`${OUT}/09b-overview-full.png`, true);
   await b.tap("text=結清", 600);
   await b.shot(`${OUT}/10-settle.png`);
-  await b.tap("text=記下：", 900);
+  await b.tap("text=記下結清", 900);
   await b.sleep(1500);
   const d = await api();
   const st = d.transactions.find((t: any) => t.type === "settle");
@@ -132,7 +132,7 @@ await step("reports", async () => {
   await b.shot(`${OUT}/13-reports-cats.png`, true);
   await b.tap("text=趨勢", 600);
   await b.shot(`${OUT}/14-reports-trend.png`, true);
-  await b.tap("text=Diana自己", 600);
+  await b.tap("text=Diana", 600);
   await b.shot(`${OUT}/15-reports-trend-diana.png`, true);
   await b.tap("text=損益", 600);
   await b.shot(`${OUT}/15b-reports-pnl-diana.png`, true);

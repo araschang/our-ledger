@@ -39,7 +39,8 @@ export async function launch(profile: string, w = 390, h = 844) {
     const dialogs = [...document.querySelectorAll('[role=dialog]')];
     const scope = dialogs.length ? dialogs[dialogs.length - 1] : document;
     const hittable = (el) => {
-      el.scrollIntoView({ block: "nearest" });
+      // 捲到中間（捲到邊邊會被底部的分頁列或頂欄蓋住，真人也點不到）
+      el.scrollIntoView({ block: "center" });
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) return false;
       const x = r.left + r.width / 2, y = r.top + r.height / 2;

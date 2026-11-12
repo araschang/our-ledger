@@ -1,145 +1,170 @@
 @import "tailwindcss";
 
-/* Apple（iOS HIG）系統色與層級。深色模式不是自動反轉，是 Apple 另外定的那一組。 */
+/*
+ * 「糖果」風格：奶油色底、白卡片、每個分類一個粉彩色、深紫墨色的字和按鈕、圓體數字（Nunito）。
+ * 深色模式是另外調的一組（粉彩變成深色的同色系），不是自動反轉。
+ * 圖表五色＋兩個人的顏色都用 dataviz 的驗色程式驗過（淺色對白卡、深色對 #221c2d）。
+ */
 :root {
   color-scheme: light;
-  --bg: #f2f2f7; /* systemGroupedBackground */
-  --card: #ffffff; /* secondarySystemGroupedBackground */
-  --card-2: #f2f2f7; /* tertiarySystemGroupedBackground */
+  --bg: #fbf6f0;
+  --card: #ffffff;
+  --card-2: #f6f0e8;
   --sheet: #ffffff;
-  --label: #000000;
-  --label-2: rgba(60, 60, 67, 0.6);
-  --label-3: rgba(60, 60, 67, 0.3);
-  --sep: rgba(60, 60, 67, 0.29);
-  --fill: rgba(120, 120, 128, 0.2);
-  --fill-2: rgba(120, 120, 128, 0.16);
-  --fill-3: rgba(118, 118, 128, 0.12);
-  --fill-4: rgba(116, 116, 128, 0.08);
-  --tint: #007aff;
-  --red: #ff3b30;
-  --orange: #ff9500;
-  --yellow: #ffcc00;
-  --green: #34c759;
-  --mint: #00c7be;
-  --teal: #30b0c7;
-  --cyan: #32ade6;
-  --blue: #007aff;
-  --indigo: #5856d6;
-  --purple: #af52de;
-  --pink: #ff2d55;
-  --brown: #a2845e;
-  --gray: #8e8e93;
-  --gray-3: #c7c7cc;
-  --gray-4: #d1d1d6;
-  --money-in: #248a3d; /* 收入的字：systemGreen 的易讀版 */
-  --material: rgba(249, 249, 249, 0.8);
-  --material-sep: rgba(0, 0, 0, 0.18);
+  --label: #2a2238;
+  --label-2: #625a78;
+  --label-3: #a39cb4;
+  --sep: rgba(42, 34, 56, 0.1);
+  --fill: rgba(42, 34, 56, 0.12);
+  --fill-2: rgba(42, 34, 56, 0.09);
+  --fill-3: rgba(42, 34, 56, 0.06);
+  --fill-4: rgba(42, 34, 56, 0.04);
+  --tint: #2a2238;
+  --on-tint: #ffffff;
+  --red: #c8401f;
+  --orange: #b0600a;
+  --yellow: #d99a1e;
+  --green: #2e9d62;
+  --gray: #a39cb4;
+  --gray-3: #d9d2e1;
+  --gray-4: #e8e2ee;
+  --money-in: #187a4a;
+  --material: rgba(251, 246, 240, 0.86);
+  --material-sep: rgba(42, 34, 56, 0.1);
   --thumb: #ffffff;
-  --hud: rgba(255, 255, 255, 0.9);
-  --hud-shadow: 0 8px 30px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  --person-1: #007aff;
-  --person-2: #ff9500;
-  --s1: #2a78d6;
-  --s2: #eb6834;
-  --s3: #1baf7a;
-  --s4: #eda100;
-  --s5: #e87ba4;
-  --s-other: #c7c7cc;
+  --hud: rgba(255, 255, 255, 0.97);
+  --hud-shadow: 0 10px 30px rgba(42, 34, 56, 0.16), 0 0 0 0.5px rgba(42, 34, 56, 0.06);
+  --shadow-card: 0 1px 2px rgba(42, 34, 56, 0.04);
+  --shadow-float: 0 10px 30px rgba(42, 34, 56, 0.14), 0 0 0 0.5px rgba(42, 34, 56, 0.05);
+  --person-1: #e0603f;
+  --person-2: #3e6fd8;
+  --person-1-soft: #ffd8cb;
+  --person-2-soft: #d6e2ff;
+  --hero: #ffd9c7;
+  --c-peach: #ffe3d6;
+  --c-mint: #cfefdf;
+  --c-lilac: #e4deff;
+  --c-butter: #fff0b8;
+  --c-pink: #ffdcea;
+  --c-sky: #d6eaff;
+  --c-sand: #f1ebe3;
+  --c-gray: #ece8f0;
+  --today-mark: #ffffff;
+  --s1: #6a4fe0;
+  --s2: #e0603f;
+  --s3: #1f9e8a;
+  --s4: #d99a1e;
+  --s5: #d64f94;
+  --s-other: #c9c2d6;
   --stack-dim: 0.86;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #000000;
-  --card: #1c1c1e;
-  --card-2: #2c2c2e;
-  --sheet: #1c1c1e;
-  --label: #ffffff;
-  --label-2: rgba(235, 235, 245, 0.6);
-  --label-3: rgba(235, 235, 245, 0.3);
-  --sep: rgba(84, 84, 88, 0.65);
-  --fill: rgba(120, 120, 128, 0.36);
-  --fill-2: rgba(120, 120, 128, 0.32);
-  --fill-3: rgba(118, 118, 128, 0.24);
-  --fill-4: rgba(118, 118, 128, 0.18);
-  --tint: #0a84ff;
-  --red: #ff453a;
-  --orange: #ff9f0a;
-  --yellow: #ffd60a;
-  --green: #30d158;
-  --mint: #63e6e2;
-  --teal: #40cbe0;
-  --cyan: #64d2ff;
-  --blue: #0a84ff;
-  --indigo: #5e5ce6;
-  --purple: #bf5af2;
-  --pink: #ff375f;
-  --brown: #ac8e68;
-  --gray: #8e8e93;
-  --gray-3: #48484a;
-  --gray-4: #3a3a3c;
-  --money-in: #30d158;
-  --material: rgba(30, 30, 30, 0.82);
-  --material-sep: rgba(255, 255, 255, 0.15);
-  --thumb: #636366;
-  --hud: rgba(52, 52, 54, 0.92);
-  --hud-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --person-1: #0a84ff;
-  --person-2: #d95926;
-  --s1: #3987e5;
-  --s2: #d95926;
-  --s3: #199e70;
-  --s4: #c98500;
-  --s5: #d55181;
-  --s-other: #48484a;
+  --bg: #16121d;
+  --card: #221c2d;
+  --card-2: #2b2438;
+  --sheet: #221c2d;
+  --label: #f3eff8;
+  --label-2: #b2a9c2;
+  --label-3: #6f6680;
+  --sep: rgba(243, 239, 248, 0.1);
+  --fill: rgba(243, 239, 248, 0.16);
+  --fill-2: rgba(243, 239, 248, 0.12);
+  --fill-3: rgba(243, 239, 248, 0.08);
+  --fill-4: rgba(243, 239, 248, 0.05);
+  --tint: #e4deff;
+  --on-tint: #16121d;
+  --red: #ff7f66;
+  --orange: #f0a34a;
+  --yellow: #e6b443;
+  --green: #43c27f;
+  --gray: #8a8199;
+  --gray-3: #4a4258;
+  --gray-4: #3a3346;
+  --money-in: #5fd394;
+  --material: rgba(22, 18, 29, 0.86);
+  --material-sep: rgba(243, 239, 248, 0.1);
+  --thumb: #463e55;
+  --hud: rgba(43, 36, 56, 0.97);
+  --hud-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-card: none;
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(243, 239, 248, 0.08);
+  --person-1: #d4583a;
+  --person-2: #5f82e8;
+  --person-1-soft: #4a2d26;
+  --person-2-soft: #26314f;
+  --hero: #4a3129;
+  --c-peach: #43302b;
+  --c-mint: #213a31;
+  --c-lilac: #2e2948;
+  --c-butter: #3d3720;
+  --c-pink: #43283a;
+  --c-sky: #22344a;
+  --c-sand: #322b27;
+  --c-gray: #2e2a36;
+  --today-mark: #f3eff8;
+  --s1: #7a66ee;
+  --s2: #d4583a;
+  --s3: #1a9683;
+  --s4: #bf8410;
+  --s5: #c94a8a;
+  --s-other: #4a4258;
   --stack-dim: 0.6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #000000;
-    --card: #1c1c1e;
-    --card-2: #2c2c2e;
-    --sheet: #1c1c1e;
-    --label: #ffffff;
-    --label-2: rgba(235, 235, 245, 0.6);
-    --label-3: rgba(235, 235, 245, 0.3);
-    --sep: rgba(84, 84, 88, 0.65);
-    --fill: rgba(120, 120, 128, 0.36);
-    --fill-2: rgba(120, 120, 128, 0.32);
-    --fill-3: rgba(118, 118, 128, 0.24);
-    --fill-4: rgba(118, 118, 128, 0.18);
-    --tint: #0a84ff;
-    --red: #ff453a;
-    --orange: #ff9f0a;
-    --yellow: #ffd60a;
-    --green: #30d158;
-    --mint: #63e6e2;
-    --teal: #40cbe0;
-    --cyan: #64d2ff;
-    --blue: #0a84ff;
-    --indigo: #5e5ce6;
-    --purple: #bf5af2;
-    --pink: #ff375f;
-    --brown: #ac8e68;
-    --gray: #8e8e93;
-    --gray-3: #48484a;
-    --gray-4: #3a3a3c;
-    --money-in: #30d158;
-    --material: rgba(30, 30, 30, 0.82);
-    --material-sep: rgba(255, 255, 255, 0.15);
-    --thumb: #636366;
-    --hud: rgba(52, 52, 54, 0.92);
-    --hud-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-    --person-1: #0a84ff;
-    --person-2: #d95926;
-    --s1: #3987e5;
-    --s2: #d95926;
-    --s3: #199e70;
-    --s4: #c98500;
-    --s5: #d55181;
-    --s-other: #48484a;
+    --bg: #16121d;
+    --card: #221c2d;
+    --card-2: #2b2438;
+    --sheet: #221c2d;
+    --label: #f3eff8;
+    --label-2: #b2a9c2;
+    --label-3: #6f6680;
+    --sep: rgba(243, 239, 248, 0.1);
+    --fill: rgba(243, 239, 248, 0.16);
+    --fill-2: rgba(243, 239, 248, 0.12);
+    --fill-3: rgba(243, 239, 248, 0.08);
+    --fill-4: rgba(243, 239, 248, 0.05);
+    --tint: #e4deff;
+    --on-tint: #16121d;
+    --red: #ff7f66;
+    --orange: #f0a34a;
+    --yellow: #e6b443;
+    --green: #43c27f;
+    --gray: #8a8199;
+    --gray-3: #4a4258;
+    --gray-4: #3a3346;
+    --money-in: #5fd394;
+    --material: rgba(22, 18, 29, 0.86);
+    --material-sep: rgba(243, 239, 248, 0.1);
+    --thumb: #463e55;
+    --hud: rgba(43, 36, 56, 0.97);
+    --hud-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --shadow-card: none;
+    --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(243, 239, 248, 0.08);
+    --person-1: #d4583a;
+    --person-2: #5f82e8;
+    --person-1-soft: #4a2d26;
+    --person-2-soft: #26314f;
+    --hero: #4a3129;
+    --c-peach: #43302b;
+    --c-mint: #213a31;
+    --c-lilac: #2e2948;
+    --c-butter: #3d3720;
+    --c-pink: #43283a;
+    --c-sky: #22344a;
+    --c-sand: #322b27;
+    --c-gray: #2e2a36;
+    --today-mark: #f3eff8;
+    --s1: #7a66ee;
+    --s2: #d4583a;
+    --s3: #1a9683;
+    --s4: #bf8410;
+    --s5: #c94a8a;
+    --s-other: #4a4258;
     --stack-dim: 0.6;
   }
 }
@@ -158,12 +183,23 @@
   --color-fill-3: var(--fill-3);
   --color-fill-4: var(--fill-4);
   --color-tint: var(--tint);
+  --color-on-tint: var(--on-tint);
   --color-red: var(--red);
   --color-orange: var(--orange);
   --color-green: var(--green);
   --color-gray: var(--gray);
   --color-money-in: var(--money-in);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Helvetica Neue", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --color-hero: var(--hero);
+  --color-c-peach: var(--c-peach);
+  --color-c-mint: var(--c-mint);
+  --color-c-lilac: var(--c-lilac);
+  --color-c-butter: var(--c-butter);
+  --color-c-pink: var(--c-pink);
+  --color-c-sky: var(--c-sky);
+  --color-c-sand: var(--c-sand);
+  --color-c-gray: var(--c-gray);
+  --font-sans: "Nunito Variable", -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Helvetica Neue", sans-serif;
+  --font-num: "Nunito Variable", ui-rounded, "SF Pro Rounded", -apple-system, "PingFang TC", sans-serif;
 }
 
 @layer base {
@@ -178,7 +214,6 @@
     color: var(--label);
     font-family: var(--font-sans);
     font-size: 17px;
-    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
@@ -209,16 +244,21 @@
   input::placeholder {
     color: var(--label-3);
   }
+  :focus-visible {
+    outline: 2.5px solid var(--tint);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .tnum {
     font-variant-numeric: tabular-nums;
   }
-  /* 金額用 SF 圓體（Apple Cash、健康 app 的數字）；其他裝置退回系統字 */
+  /* 金額：Nunito 圓體（沒載到時退回 iPhone 的 SF 圓體） */
   .rounded-num {
-    font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif;
-    letter-spacing: -0.02em;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
   .scroll {
     overflow-y: auto;
@@ -233,8 +273,8 @@
   }
   .material {
     background: var(--material);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    backdrop-filter: saturate(160%) blur(18px);
   }
   .hairline-b {
     box-shadow: inset 0 -0.5px 0 var(--material-sep);
@@ -242,7 +282,15 @@
   .hairline-t {
     box-shadow: inset 0 0.5px 0 var(--material-sep);
   }
-  /* iOS 列表：分隔線從文字開始的地方畫（不穿過圖示） */
+  .card {
+    background: var(--card);
+    border-radius: 26px;
+    box-shadow: var(--shadow-card);
+  }
+  .float {
+    box-shadow: var(--shadow-float);
+  }
+  /* 卡片裡的列：分隔線從文字開始的地方畫（不穿過圖示） */
   .ios-rows > * + * {
     position: relative;
   }
@@ -250,23 +298,37 @@
     content: "";
     position: absolute;
     top: 0;
-    right: 0;
+    right: var(--sep-right, 16px);
     left: var(--sep-inset, 16px);
-    height: 0.5px;
+    height: 1px;
     background: var(--sep);
     z-index: 1;
   }
+  /* 按下去：微微縮一下（糖果感），不是變透明 */
   .press {
-    transition: opacity 0.12s ease, background-color 0.15s ease, transform 0.1s ease;
+    transition: opacity 0.12s ease, background-color 0.15s ease, transform 0.12s ease;
   }
   .press:active {
-    opacity: 0.55;
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+  .row-press {
+    transition: background-color 0.15s ease;
   }
   .row-press:active {
     background: var(--fill-4);
   }
+  @media (hover: hover) {
+    .row-press:hover {
+      background: var(--fill-4);
+    }
+  }
+  .key {
+    transition: background-color 0.1s ease, transform 0.1s ease;
+  }
   .key:active {
-    background: var(--fill-2);
+    background: var(--fill);
+    transform: scale(0.96);
   }
   .safe-b {
     padding-bottom: env(safe-area-inset-bottom);
@@ -274,22 +336,33 @@
   .safe-t {
     padding-top: env(safe-area-inset-top);
   }
+  /* 手機底部浮起來的分頁列：內容要留出空間 */
+  .tabbar-space {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 112px);
+  }
+  @media (min-width: 1024px) {
+    .tabbar-space {
+      padding-bottom: 48px;
+    }
+  }
 }
 
-/* 頁面卡片（page sheet）打開時，底下的 app 縮小、圓角、變暗，跟 iOS 一樣 */
+/* 手機：整頁卡片打開時，底下的 app 縮小、圓角、變暗（電腦版是置中的對話框，不縮） */
 #app-shell {
   transform-origin: 50% 0;
   transition: transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.38s ease, filter 0.38s ease;
 }
-html.sheet-stack,
-html.sheet-stack body {
-  background: #000;
-}
-html.sheet-stack #app-shell {
-  transform: translateY(calc(env(safe-area-inset-top) + 2px)) scale(0.92);
-  border-radius: 12px;
-  overflow: hidden;
-  filter: brightness(var(--stack-dim));
+@media (max-width: 1023px) {
+  html.sheet-stack,
+  html.sheet-stack body {
+    background: #000;
+  }
+  html.sheet-stack #app-shell {
+    transform: translateY(calc(env(safe-area-inset-top) + 2px)) scale(0.92);
+    border-radius: 16px;
+    overflow: hidden;
+    filter: brightness(var(--stack-dim));
+  }
 }
 
 @keyframes sheet-in {
@@ -298,6 +371,16 @@ html.sheet-stack #app-shell {
   }
   to {
     transform: translateY(0);
+  }
+}
+@keyframes pop-in {
+  from {
+    transform: translateY(14px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
   }
 }
 @keyframes fade-in {
@@ -320,7 +403,7 @@ html.sheet-stack #app-shell {
 }
 @keyframes flash {
   0% {
-    background: color-mix(in oklab, var(--tint) 16%, var(--card));
+    background: color-mix(in oklab, var(--c-lilac) 100%, var(--card));
   }
   100% {
     background: var(--card);
@@ -341,6 +424,9 @@ html.sheet-stack #app-shell {
 .anim-sheet {
   animation: sheet-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.anim-pop {
+  animation: pop-in 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
 .anim-fade {
   animation: fade-in 0.25s ease;
 }
@@ -355,12 +441,19 @@ html.sheet-stack #app-shell {
 }
 @media (prefers-reduced-motion: reduce) {
   .anim-sheet,
+  .anim-pop,
   .anim-fade,
   .anim-hud,
   .anim-flash,
   .anim-shake,
-  #app-shell {
+  #app-shell,
+  .press,
+  .key {
     animation: none;
     transition: none;
+  }
+  .press:active,
+  .key:active {
+    transform: none;
   }
 }

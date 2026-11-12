@@ -34,10 +34,10 @@ function Callout({ x, width, label, value }: { x: number; width: number; label: 
   const w = 132;
   const left = Math.max(0, Math.min(width - w, x - w / 2));
   return (
-    <div className="pointer-events-none absolute top-0 flex h-[44px] flex-col justify-center rounded-[8px] bg-fill-4 px-2.5"
+    <div className="pointer-events-none absolute top-0 flex h-[44px] flex-col justify-center rounded-[14px] bg-card-2 px-3"
       style={{ left, width: w }}>
-      <div className="truncate text-[11px] leading-[13px] font-medium text-label-2">{label}</div>
-      <div className="rounded-num tnum truncate text-[19px] leading-[24px] font-semibold">{value}</div>
+      <div className="truncate text-[11px] leading-[13px] font-bold text-label-2">{label}</div>
+      <div className="rounded-num tnum truncate text-[19px] leading-[24px] font-black">{value}</div>
     </div>
   );
 }
@@ -90,7 +90,7 @@ export function ColumnChart({ data, selected, onSelect, height = 200, format = (
         <svg width={W} height={height} role="img" className="block overflow-visible">
           {ticks.map((t) => (
             <g key={t}>
-              <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--gray-3)" : "var(--sep)"} strokeWidth={t === 0 ? 1 : 0.5} />
+              <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--gray-3)" : "var(--sep)"} strokeWidth={1} />
               <text x={plotW + 6} y={y(t) + 4} fontSize={11} fill="var(--label-2)" className="tnum">{axis(t)}</text>
             </g>
           ))}
@@ -108,7 +108,7 @@ export function ColumnChart({ data, selected, onSelect, height = 200, format = (
                 <path d={barPath(x, base, bw, base - y(d.value))} fill={fill} opacity={!emphasis && !isSel ? 0.45 : 1} />
                 {(i % labelEvery === (data.length - 1) % labelEvery || isSel) && (
                   <text x={x + bw / 2} y={height - 5} textAnchor="middle" fontSize={11}
-                    fill={isSel ? "var(--label)" : "var(--label-2)"} fontWeight={isSel ? 600 : 400}>
+                    fill={isSel ? "var(--label)" : "var(--label-2)"} fontWeight={isSel ? 800 : 600}>
                     {d.label}
                   </text>
                 )}
@@ -162,7 +162,7 @@ export function StackedColumns({ series, cols, selected, onSelect, height = 210 
         <svg width={W} height={height} role="img" className="block">
           {[maxV, maxV / 2, 0].map((t) => (
             <g key={t}>
-              <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--gray-3)" : "var(--sep)"} strokeWidth={t === 0 ? 1 : 0.5} />
+              <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--gray-3)" : "var(--sep)"} strokeWidth={1} />
               <text x={plotW + 6} y={y(t) + 4} fontSize={11} fill="var(--label-2)" className="tnum">{compact(t)}</text>
             </g>
           ))}
@@ -186,7 +186,7 @@ export function StackedColumns({ series, cols, selected, onSelect, height = 210 
                   ) : null;
                 })}
                 <text x={x + bw / 2} y={height - 5} textAnchor="middle" fontSize={11}
-                  fill={isSel ? "var(--label)" : "var(--label-2)"} fontWeight={isSel ? 600 : 400}>{c.label}</text>
+                  fill={isSel ? "var(--label)" : "var(--label-2)"} fontWeight={isSel ? 800 : 600}>{c.label}</text>
                 <rect x={i * band} y={0} width={band} height={height} fill="transparent" role="button" tabIndex={0}
                   aria-label={`${c.label} 合計 ${money(totals[i], { cents: false })}`} onClick={() => onSelect(c.key)}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect(c.key)} />
@@ -239,25 +239,25 @@ export function AreaLine({ points, selected, onSelect, height = 200 }: {
           }}>
           <defs>
             <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="var(--tint)" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="var(--tint)" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="var(--s1)" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="var(--s1)" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           {[maxV, minV < 0 ? 0 : maxV / 2, minV].map((t) => (
             <g key={t}>
-              <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--gray-3)" : "var(--sep)"} strokeWidth={t === 0 ? 1 : 0.5} />
+              <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--gray-3)" : "var(--sep)"} strokeWidth={1} />
               <text x={plotW + 6} y={y(t) + 4} fontSize={11} fill="var(--label-2)" className="tnum">{compact(t)}</text>
             </g>
           ))}
           <path d={area} fill={`url(#${gid})`} />
-          <path d={line} fill="none" stroke="var(--tint)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+          <path d={line} fill="none" stroke="var(--s1)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
           <line x1={x(si)} x2={x(si)} y1={44} y2={y(points[si].value)} stroke="var(--gray-3)" strokeWidth={1} />
-          <circle cx={x(si)} cy={y(points[si].value)} r={5} fill="var(--tint)" stroke="var(--card)" strokeWidth={2.5} />
+          <circle cx={x(si)} cy={y(points[si].value)} r={5} fill="var(--s1)" stroke="var(--card)" strokeWidth={2.5} />
           {points.map((p, i) =>
             i % labelEvery === (points.length - 1) % labelEvery || i === si ? (
               <text key={p.key} x={x(i)} y={height - 5} fontSize={11}
                 textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}
-                fill={i === si ? "var(--label)" : "var(--label-2)"} fontWeight={i === si ? 600 : 400}>{p.label}</text>
+                fill={i === si ? "var(--label)" : "var(--label-2)"} fontWeight={i === si ? 800 : 600}>{p.label}</text>
             ) : null)}
         </svg>
       )}
@@ -278,19 +278,19 @@ export function CategoryBars({ rows, onSelect, total }: {
       {rows.map((r) => (
         <button key={r.key} disabled={!onSelect} onClick={() => onSelect?.(r.key)}
           className={cx("flex w-full items-center gap-3 px-4 py-[10px] text-left", onSelect && "row-press")}>
-          <CatIcon category={r.key} size={30} />
+          <CatIcon category={r.key} size={34} />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-[17px]">{r.key}</span>
-              <span className="rounded-num tnum shrink-0 text-[17px]">
+              <span className="truncate text-[16px] font-semibold">{r.key}</span>
+              <span className="rounded-num tnum shrink-0 text-[16px] font-extrabold">
                 {money(r.value, { cents: false })}
                 <span className="ml-1.5 inline-block w-9 text-right text-[13px] text-label-2">
                   {sum > 0 ? `${Math.round((r.value / sum) * 100)}%` : ""}
                 </span>
               </span>
             </div>
-            <div className="mt-1.5 h-[5px] w-full rounded-full bg-fill-3">
-              <div className="h-[5px] rounded-full bg-tint" style={{ width: `${Math.max(1.5, (r.value / top) * 100)}%` }} />
+            <div className="mt-1.5 h-[6px] w-full rounded-full bg-fill-3">
+              <div className="h-[6px] rounded-full bg-tint" style={{ width: `${Math.max(1.5, (r.value / top) * 100)}%` }} />
             </div>
           </div>
         </button>
@@ -311,9 +311,9 @@ export function PairedBars({ rows, series }: {
       <div className="mt-3 flex flex-col gap-3.5">
         {rows.map((r) => (
           <div key={r.key} className="flex items-center gap-3">
-            <CatIcon category={r.key} size={26} />
+            <CatIcon category={r.key} size={30} />
             <div className="min-w-0 flex-1">
-              <div className="mb-1 text-[15px]">{r.key}</div>
+              <div className="mb-1 text-[15px] font-semibold">{r.key}</div>
               {r.values.map((v, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="h-[6px] flex-1 rounded-full bg-fill-3">
@@ -348,7 +348,7 @@ export function DataTable({ head, rows }: { head: string[]; rows: (string | numb
   const [open, setOpen] = useState(false);
   return (
     <div className="px-4 pb-3">
-      <button className="press text-[15px] text-tint" onClick={() => setOpen((o) => !o)}>
+      <button className="press text-[14px] font-extrabold text-tint underline underline-offset-2" onClick={() => setOpen((o) => !o)}>
         {open ? "隱藏數字" : "顯示數字"}
       </button>
       {open && (
@@ -363,7 +363,7 @@ export function DataTable({ head, rows }: { head: string[]; rows: (string | numb
             </thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr key={i} className="border-t-[0.5px] border-sep">
+                <tr key={i} className="border-t border-sep">
                   {r.map((c, j) => (
                     <td key={j} className={cx("py-1.5 whitespace-nowrap", j ? "text-right" : "text-left")}>{c}</td>
                   ))}
@@ -382,7 +382,7 @@ export function ChartCard({ title, subtitle, children }: { title?: ReactNode; su
     <div className="pt-3">
       {(title || subtitle) && (
         <div className="px-4 pb-2">
-          {title && <div className="text-[17px] font-semibold">{title}</div>}
+          {title && <div className="text-[17px] font-extrabold">{title}</div>}
           {subtitle && <div className="text-[13px] text-label-2">{subtitle}</div>}
         </div>
       )}

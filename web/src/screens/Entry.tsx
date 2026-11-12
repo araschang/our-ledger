@@ -6,13 +6,13 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
-import { ActionSheet, BigButton, CatIcon, Dot, Segmented, Sheet, TextButton, toast } from "../components/ui";
+import { ActionSheet, Avatar, BigButton, CatIcon, Segmented, Sheet, TextButton, toast, useWide } from "../components/ui";
 import { normalizeMeta } from "../lib/analytics";
 import { addDays, CURRENCY_SYMBOL, dayShort, money, todayLocal } from "../lib/format";
 import { getPrefs } from "../lib/prefs";
 import { store, type TxnInput, useStore } from "../lib/store";
 import type { Txn } from "../lib/types";
-import { cx, nameOf, otherOf, personColor } from "../lib/ui";
+import { cx, nameOf, otherOf } from "../lib/ui";
 
 const CURRENCIES = ["CAD", "USD", "TWD"];
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
@@ -36,6 +36,7 @@ export function Entry({ target, onClose, onSaved }: {
   onSaved: (id: string) => void;
 }) {
   const snap = useStore();
+  const wide = useWide();
   const data = snap.data!;
   const meta = normalizeMeta(data.meta);
   const ids = meta.people.map((p) => p.id);
@@ -170,10 +171,10 @@ export function Entry({ target, onClose, onSaved }: {
   };
 
   return (
-    <Sheet open page onClose={onClose}
+    <Sheet open page onClose={onClose} wideWidth={560}
       left={<TextButton onClick={onClose}>取消</TextButton>}
       title={isSettle ? "修改結清" : (
-        <Segmented className="w-[150px]" ariaLabel="類型" value={type}
+        <Segmented className="w-[164px]" ariaLabel="類型" value={type}
           onChange={(v) => {
             setType(v);
             if (!editing || v !== editing.type) setCategory(null);
@@ -181,7 +182,7 @@ export function Entry({ target, onClose, onSaved }: {
           options={[{ value: "expense", label: "支出" }, { value: "income", label: "收入" }]} />
       )}
       right={
-        <label className="press relative flex h-8 items-center gap-1 rounded-full bg-fill-3 px-3 text-[15px] font-medium text-tint">
+        <label className="press relative flex h-9 items-center gap-1.5 rounded-full bg-fill-3 px-3.5 text-[15px] font-bold">
           <Icon name="calendar" size={15} strokeWidth={2.2} />
           {dateLabel}
           <input type="date" value={date} max="2099-12-31" aria-label="日期"
@@ -196,36 +197,40 @@ export function Entry({ target, onClose, onSaved }: {
             className="absolute inset-0 opacity-0" />
         </label>
       }
-      footer={!typing && (
+      footer={(wide || !typing) && (
         <div>
-          <div className="grid grid-cols-3 gap-x-2 gap-y-1">
-            {KEYS.map((k) => (
-              <button key={k} onClick={() => press(k)} aria-label={k === "⌫" ? "刪掉一位" : k}
-                className="key rounded-num flex h-[46px] items-center justify-center rounded-[12px] text-[28px] font-medium">
-                {k === "⌫" ? <Icon name="backspace" size={26} strokeWidth={1.8} /> : k}
-              </button>
-            ))}
-          </div>
-          <BigButton className={cx("mt-2", !ready && "opacity-40")} onClick={save}>
+          {!wide && (
+            <div className="grid grid-cols-3 gap-x-2 gap-y-1.5">
+              {KEYS.map((k) => (
+                <button key={k} onClick={() => press(k)} aria-label={k === "⌫" ? "刪掉一位" : k}
+                  className="key rounded-num flex h-[46px] items-center justify-center rounded-[16px] bg-card-2 text-[27px] font-extrabold">
+                  {k === "⌫" ? <Icon name="backspace" size={25} strokeWidth={2} /> : k}
+                </button>
+              ))}
+            </div>
+          )}
+          <BigButton className={cx(!wide && "mt-2", !ready && "opacity-40")} onClick={save}>
             {editing ? "儲存" : "記下來"}
+            {wide && <kbd className="rounded-md bg-[color-mix(in_oklab,var(--on-tint)_18%,transparent)] px-1.5 text-[12px] font-bold">Enter</kbd>}
           </BigButton>
         </div>
       )}
     >
       {/* 金額 */}
       <div className={cx("flex flex-col items-center pt-1", shake === "amt" && "anim-shake")}>
-        <div className="rounded-num flex max-w-full items-baseline font-semibold">
+        <div className="rounded-num flex max-w-full items-baseline font-black">
           <span className="mr-1 text-[30px] text-label-3">{CURRENCY_SYMBOL[currency] ?? currency}</span>
-          <span className={cx("truncate text-[56px] leading-[62px] tracking-tight", !amt && "text-label-3")}>{amountText(amt)}</span>
+          <span className={cx("truncate text-[58px] leading-[64px] tracking-[-0.02em]", !amt && "text-label-3")}>{amountText(amt)}</span>
         </div>
+        {wide && !amt && <div className="-mt-1 text-[13px] font-semibold text-label-2">直接用鍵盤打數字，Enter 記下來</div>}
         <div className="mt-1.5 flex items-center gap-2">
-          <button className="press flex h-8 items-center gap-1.5 rounded-full bg-fill-3 px-3 text-[15px] font-medium"
+          <button className="press flex h-9 items-center gap-1.5 rounded-full bg-fill-3 pr-3 pl-1.5 text-[15px] font-bold"
             onClick={() => setPerson(other)} aria-label="換付款人">
-            <Dot color={personColor(meta, person)} />
+            <Avatar meta={meta} pid={person} size={26} />
             {isSettle ? `${nameOf(meta, person)} 付給 ${nameOf(meta, other)}` : `${nameOf(meta, person)} 付`}
             <Icon name="swap" size={14} strokeWidth={2.4} className="text-label-2" />
           </button>
-          <button className="press flex h-8 items-center gap-1 rounded-full bg-fill-3 px-3 text-[15px] font-medium"
+          <button className="press flex h-9 items-center gap-1 rounded-full bg-fill-3 px-3.5 text-[15px] font-bold"
             onClick={() => setCurrency(CURRENCIES[(CURRENCIES.indexOf(currency) + 1) % CURRENCIES.length])}
             aria-label="切換幣別">
             {currency}
@@ -247,9 +252,9 @@ export function Entry({ target, onClose, onSaved }: {
                 if (!editing) setItem("");
               }}
               className="flex flex-col items-center gap-1 active:opacity-60">
-              <CatIcon category={c} size={40} selected={c === category} />
+              <CatIcon category={c} size={44} selected={c === category} />
               <span className={cx("w-full truncate px-0.5 text-center text-[11px] leading-[13px]",
-                c === category ? "font-semibold text-tint" : "text-label-2")}>{c}</span>
+                c === category ? "font-black text-label" : "font-semibold text-label-2")}>{c}</span>
             </button>
           ))}
         </div>
@@ -259,10 +264,14 @@ export function Entry({ target, onClose, onSaved }: {
       <div className="mt-4 flex items-center gap-2">
         <input ref={itemRef} value={item} onChange={(e) => setItem(e.target.value)} {...focusProps}
           placeholder={isSettle ? "說明（可不填）" : "品項（可不填）"} enterKeyHint="done" maxLength={200}
-          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          className="h-10 min-w-0 flex-1 rounded-[10px] bg-fill-3 px-3 outline-none" />
-        <button className={cx("press flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
-          showNote || note ? "bg-tint text-white" : "bg-fill-3 text-tint")}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            if (wide) save();
+            else (e.target as HTMLInputElement).blur();
+          }}
+          className="h-12 min-w-0 flex-1 rounded-[16px] bg-fill-3 px-4 outline-none" />
+        <button className={cx("press flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px]",
+          showNote || note ? "bg-tint text-on-tint" : "bg-fill-3 text-label")}
           onClick={() => setShowNote((s) => !s)} aria-expanded={showNote} aria-label="備註">
           <Icon name="note" size={18} />
         </button>
@@ -275,8 +284,8 @@ export function Entry({ target, onClose, onSaved }: {
                 setItem(s);
                 itemRef.current?.blur();
               }}
-              className={cx("press h-[30px] shrink-0 rounded-full px-3 text-[15px]",
-                s === item ? "bg-tint text-white" : "bg-fill-3")}>
+              className={cx("press h-8 shrink-0 rounded-full px-3.5 text-[15px] font-semibold",
+                s === item ? "bg-tint text-on-tint" : "bg-fill-3")}>
               {s}
             </button>
           ))}
@@ -285,7 +294,7 @@ export function Entry({ target, onClose, onSaved }: {
       {showNote && (
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註" maxLength={900} {...focusProps}
           enterKeyHint="done" onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          className="mt-2 h-10 w-full rounded-[10px] bg-fill-3 px-3 outline-none" />
+          className="mt-2 h-12 w-full rounded-[16px] bg-fill-3 px-4 outline-none" />
       )}
 
       {/* 分法 */}
@@ -301,7 +310,7 @@ export function Entry({ target, onClose, onSaved }: {
               { value: "own", label: `${nameOf(meta, person)}自己` },
               { value: "advance", label: `幫${nameOf(meta, other)}墊` },
             ]} />
-          <div className="rounded-num mt-1.5 px-1 text-center text-[13px] text-label-2">
+          <div className="mt-1.5 px-1 text-center text-[13px] text-label-2">
             {split === "half" ? `兩人各一半，${nameOf(meta, other)} 要還 ${money((amount * rate) / 2)}`
               : split === "own" ? `只算 ${nameOf(meta, person)} 的，不進分帳`
                 : `幫 ${nameOf(meta, other)} 付的，${nameOf(meta, other)} 要還 ${money(amount * rate)}`}

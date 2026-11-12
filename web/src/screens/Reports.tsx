@@ -34,10 +34,10 @@ export function Reports({ month, setMonth, range, onEdit, trailing }: {
 
   return (
     <Screen title="報表" trailing={trailing} header={
-      <div className="flex flex-col gap-2 px-4 pt-1">
-        <Segmented ariaLabel="報表" value={tab} onChange={setTab}
+      <div className="flex flex-col gap-2 px-4 pt-1 lg:flex-row lg:px-0">
+        <Segmented className="lg:w-[260px]" ariaLabel="報表" value={tab} onChange={setTab}
           options={[{ value: "pnl", label: "損益" }, { value: "cats", label: "分類" }, { value: "trend", label: "趨勢" }]} />
-        <Segmented ariaLabel="看誰" value={view} onChange={setView}
+        <Segmented className="lg:w-[340px]" ariaLabel="看誰" value={view} onChange={setView}
           options={[{ value: "all", label: "兩人合計" },
             ...meta.people.map((p) => ({ value: p.id, label: <><Dot color={personColor(meta, p.id)} size={7} />{p.name}</> }))]} />
         {who && (
@@ -64,17 +64,17 @@ function Delta({ cur, prev, goodWhenDown = false }: { cur: number; prev: number 
   if (Math.abs(d) < 0.5) return <div className="mt-0.5 text-[13px] text-label-2">持平</div>;
   const good = goodWhenDown ? d < 0 : d > 0;
   return (
-    <div className={cx("rounded-num tnum mt-0.5 text-[13px] font-semibold", good ? "text-money-in" : "text-red")}>
+    <div className={cx("rounded-num tnum mt-0.5 text-[13px] font-extrabold", good ? "text-money-in" : "text-red")}>
       {d > 0 ? "▲" : "▼"} {money(Math.abs(d), { cents: false })}
     </div>
   );
 }
 
-function Tile({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
+function Tile({ label, value, children, tone = "card" }: { label: string; value: string; children?: React.ReactNode; tone?: string }) {
   return (
-    <div className="rounded-[12px] bg-card px-3.5 py-3">
-      <div className="text-[13px] text-label-2">{label}</div>
-      <div className="rounded-num mt-0.5 text-[26px] leading-[32px] font-bold tracking-tight">{value}</div>
+    <div className="rounded-[24px] px-4 py-3.5" style={{ background: tone === "card" ? "var(--card)" : `var(--c-${tone})` }}>
+      <div className="text-[13px] font-bold text-label-2">{label}</div>
+      <div className="rounded-num mt-0.5 text-[26px] leading-[32px] font-black tracking-[-0.02em]">{value}</div>
       {children}
     </div>
   );
@@ -100,9 +100,9 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
       {cats.length === 0 && <div className="px-4 py-3 text-[15px] text-label-2">沒有</div>}
       {cats.map(([c, v]) => (
         <button key={c} className="row-press flex w-full items-center gap-3 px-4 py-[9px] text-left" onClick={() => onCat(c, type)}>
-          <CatIcon category={c} size={30} />
-          <span className="flex-1 truncate text-[17px]">{c}</span>
-          <span className="rounded-num tnum text-[17px] text-label-2">{money(v)}</span>
+          <CatIcon category={c} size={32} />
+          <span className="flex-1 truncate text-[16px] font-semibold">{c}</span>
+          <span className="rounded-num tnum text-[16px] font-bold text-label-2">{money(v)}</span>
         </button>
       ))}
     </Group>
@@ -111,39 +111,41 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
   const Total = ({ title, value, hint }: { title: string; value: number; hint?: string }) => (
     <Group top={16}>
       <div className="flex items-center px-4 py-3">
-        <span className="flex-1 text-[17px] font-semibold">{title}{hint && <span className="ml-2 text-[13px] font-normal text-label-2">{hint}</span>}</span>
-        <span className={cx("rounded-num tnum text-[20px] font-bold", value < 0 && "text-red")}>{money(value)}</span>
+        <span className="flex-1 text-[17px] font-extrabold">{title}{hint && <span className="ml-2 text-[13px] font-normal text-label-2">{hint}</span>}</span>
+        <span className={cx("rounded-num tnum text-[20px] font-black", value < 0 && "text-red")}>{money(value)}</span>
       </div>
     </Group>
   );
 
   return (
-    <>
+    <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+    <div>
       <MonthRow className="pt-1" month={month} min={range[0]} max={range[1]} onChange={setMonth} />
-      <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
-        <Tile label="總支出" value={money(p.expense, { cents: false })}>
+      <div className="mx-4 mt-3 grid grid-cols-2 gap-3 lg:mx-0">
+        <Tile label="總支出" value={money(p.expense, { cents: false })} tone="peach">
           <Delta cur={curCmp.expense} prev={prev?.expense} goodWhenDown />
         </Tile>
-        <Tile label="淨存" value={money(p.net, { cents: false })}>
+        <Tile label="淨存" value={money(p.net, { cents: false })} tone="butter">
           <Delta cur={curCmp.net} prev={prev?.net} />
         </Tile>
-        <Tile label="儲蓄率" value={pct(p.save_rate)}>
+        <Tile label="儲蓄率" value={pct(p.save_rate)} tone="mint">
           <div className="mt-0.5 text-[13px] text-label-2">淨存 ÷ 收入</div>
         </Tile>
-        <Tile label="固定支出比率" value={pct(p.fixed_ratio)}>
+        <Tile label="固定支出比率" value={pct(p.fixed_ratio)} tone="lilac">
           <div className="mt-0.5 text-[13px] text-label-2">固定支出 ÷ 收入</div>
         </Tile>
       </div>
-      {label && <div className="px-8 pt-2 text-[13px] text-label-2">▲▼ {label}</div>}
+      {label && <div className="px-8 pt-2 text-[13px] text-label-2 lg:px-2">▲▼ {label}</div>}
 
       <Section title="收入" total={p.income} cats={p.income_by} type="income" />
       <Section title="固定支出" total={p.fixed} cats={p.fixed_by} type="expense" minus />
       <Total title="可支配餘裕" value={p.disposable} hint="收入 − 固定支出" />
       <Section title="變動支出" total={p.variable} cats={p.variable_by} type="expense" minus />
       <Total title="淨存" value={p.net} hint={p.save_rate != null ? `儲蓄率 ${pct(p.save_rate)}` : undefined} />
-      <div className="px-8 pt-2 text-[13px] text-label-2">點分類看明細；哪些算固定支出可以在「設定」改。</div>
+      <div className="px-8 pt-2 text-[13px] text-label-2 lg:px-2">點分類看明細；哪些算固定支出可以在「設定」改。</div>
+    </div>
 
-      <Group header={`${yr} 年`} headerRight={years.length > 1 ? undefined : "點一列跳到那個月"}>
+      <Group className="lg:sticky lg:top-4" header={`${yr} 年`} headerRight={years.length > 1 ? undefined : "點一列跳到那個月"}>
         {years.length > 1 && (
           <div className="px-4 pt-3">
             <Segmented value={yr} onChange={setYear} options={years.slice(0, 4).map((y) => ({ value: y, label: y }))} />
@@ -163,7 +165,7 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
             <tbody>
               {yearly.map((r) => (
                 <tr key={r.month} onClick={() => setMonth(r.month)}
-                  className={cx("cursor-pointer border-t-[0.5px] border-sep", r.month === month && "font-semibold text-tint")}>
+                  className={cx("cursor-pointer border-t border-sep hover:bg-fill-4", r.month === month && "font-black")}>
                   <td className="px-2 py-2.5">{monthShort(r.month)}</td>
                   <td className="px-2 py-2.5 text-right">{money(r.income, { cents: false })}</td>
                   <td className="px-2 py-2.5 text-right">{money(r.expense, { cents: false })}</td>
@@ -172,7 +174,7 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
                 </tr>
               ))}
               {yearly.length > 0 && (
-                <tr className="border-t-[0.5px] border-sep font-semibold">
+                <tr className="border-t border-sep font-black">
                   <td className="px-2 py-2.5">合計</td>
                   <td className="px-2 py-2.5 text-right">{money(sum.income, { cents: false })}</td>
                   <td className="px-2 py-2.5 text-right">{money(sum.expense, { cents: false })}</td>
@@ -184,7 +186,7 @@ function PnlTab({ rows, fixed, month, setMonth, range, onCat }: {
           </table>
         </div>
       </Group>
-    </>
+    </div>
   );
 }
 
@@ -225,7 +227,7 @@ function CatsTab({ rows, all, meta, month, who, onCat, onEdit }: {
   const top = A.topExpenses(rows, 10, topScope === "month" ? month : null);
 
   return (
-    <>
+    <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
       <Group header="最近 6 個月" headerRight="點柱子換月份">
         {cols.length === 0 ? <div className="px-4 py-6 text-center text-label-2">還沒有支出</div> : (
           <>
@@ -237,8 +239,8 @@ function CatsTab({ rows, all, meta, month, who, onCat, onEdit }: {
                 <button key={s.key} disabled={s.key === "__other"} onClick={() => onCat(s.key, selKey)}
                   className="row-press flex w-full items-center gap-3 px-4 py-2.5 text-left disabled:active:bg-transparent">
                   <span className="inline-block h-3 w-3 shrink-0 rounded-[3px]" style={{ background: s.color }} />
-                  <span className="flex-1 truncate text-[17px]">{s.label}</span>
-                  <span className="rounded-num tnum text-[17px] text-label-2">{money(selCol?.values[s.key] ?? 0, { cents: false })}</span>
+                  <span className="flex-1 truncate text-[16px] font-semibold">{s.label}</span>
+                  <span className="rounded-num tnum text-[16px] font-bold text-label-2">{money(selCol?.values[s.key] ?? 0, { cents: false })}</span>
                 </button>
               ))}
             </div>
@@ -261,7 +263,7 @@ function CatsTab({ rows, all, meta, month, who, onCat, onEdit }: {
         </Group>
       )}
 
-      <Group header="大額支出" inset={58}>
+      <Group header="大額支出" inset={58} className="lg:col-span-2">
         <div className="px-4 py-3">
           <Segmented value={topScope} onChange={setTopScope}
             options={[{ value: "month", label: monthTitle(month) }, { value: "all", label: "全部期間" }]} />
@@ -269,18 +271,18 @@ function CatsTab({ rows, all, meta, month, who, onCat, onEdit }: {
         {top.length === 0 && <div className="px-4 py-6 text-center text-label-2">沒有支出</div>}
         {top.map((r) => (
           <button key={r.id} className="row-press flex w-full items-center gap-3 px-4 py-[9px] text-left" onClick={() => onEdit(r.txn)}>
-            <CatIcon category={r.category} size={30} />
+            <CatIcon category={r.category} size={36} />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[17px]">{r.item || r.category}</div>
+              <div className="truncate text-[16px] font-bold">{r.item || r.category}</div>
               <div className="text-[13px] text-label-2">
                 {Number(r.date.slice(5, 7))}/{Number(r.date.slice(8, 10))} · {nameOf(meta, r.person)} · {r.category}
               </div>
             </div>
-            <span className="rounded-num tnum text-[17px] font-medium">{money(r.amount)}</span>
+            <span className="rounded-num tnum text-[17px] font-extrabold">{money(r.amount)}</span>
           </button>
         ))}
       </Group>
-    </>
+    </div>
   );
 }
 
@@ -298,13 +300,14 @@ function TrendTab({ rows, month }: { rows: Row[]; month: string }) {
   if (cn.length === 0) return <div className="py-10 text-center text-label-2">還沒有資料</div>;
   return (
     <>
-      <div className="mx-4 mt-3 grid grid-cols-3 gap-2.5">
-        <Tile label="累積淨存" value={money(cn[cn.length - 1].cum_net, { cents: false })} />
-        <Tile label={`${monthShort(month)}儲蓄率`} value={pct(cn.find((c) => c.month === month)?.save_rate)} />
-        <Tile label={`${monthShort(month)}日均`} value={money(mExp / Math.max(1, days), { cents: false })} />
+      <div className="mx-4 mt-3 grid grid-cols-3 gap-2.5 lg:mx-0 lg:gap-4">
+        <Tile label="累積淨存" value={money(cn[cn.length - 1].cum_net, { cents: false })} tone="butter" />
+        <Tile label={`${monthShort(month)}儲蓄率`} value={pct(cn.find((c) => c.month === month)?.save_rate)} tone="mint" />
+        <Tile label={`${monthShort(month)}日均`} value={money(mExp / Math.max(1, days), { cents: false })} tone="peach" />
       </div>
-      <div className="px-8 pt-2 text-[13px] text-label-2">日均＝這個月支出 ÷ {days} 天</div>
+      <div className="px-8 pt-2 text-[13px] text-label-2 lg:px-2">日均＝這個月支出 ÷ {days} 天</div>
 
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
       <Group header="累積淨存">
         <div className="px-4 pt-3 pb-1">
           <AreaLine selected={selKey} onSelect={setSel}
@@ -327,6 +330,7 @@ function TrendTab({ rows, month }: { rows: Row[]; month: string }) {
         )}
       </Group>
 
+      </div>
       <Group header="星期幾最會花錢" footer={wd.length ? `全部期間加總；最多的是週${maxWd.label}。` : undefined}>
         {wd.length === 0 ? <div className="px-4 py-6 text-center text-label-2">沒有支出</div> : (
           <div className="px-4 pt-3 pb-2">

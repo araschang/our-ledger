@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import "@fontsource-variable/nunito";
 import "./index.css";
 import { applyTheme } from "./lib/prefs";
 import { store } from "./lib/store";

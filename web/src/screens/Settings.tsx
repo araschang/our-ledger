@@ -1,20 +1,20 @@
 /** 設定（iOS 設定 app 的樣子）：這支手機、名字、分類、固定支出、預算、匯出。改了就存，兩支手機都會更新。 */
 import { useEffect, useState } from "react";
 import { Icon } from "../components/Icon";
-import { ActionSheet, CatIcon, Dot, Group, Row, Screen, toast } from "../components/ui";
+import { ActionSheet, Avatar, CatIcon, Group, Row, Screen, toast } from "../components/ui";
 import { fixedCats, normalizeMeta } from "../lib/analytics";
 import { timeAgo } from "../lib/format";
 import { setPrefs, usePrefs } from "../lib/prefs";
 import { store, useStore } from "../lib/store";
 import type { Meta } from "../lib/types";
-import { cx, personColor } from "../lib/ui";
+import { cx } from "../lib/ui";
 
 /** iOS 的下拉選單：用原生 select（iPhone 上會跳出系統的選擇器）。 */
 function Picker<T extends string>({ value, options, onChange, label }: {
   value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string;
 }) {
   return (
-    <span className="relative flex items-center gap-1 text-[17px] text-label-2">
+    <span className="relative flex items-center gap-1 rounded-full bg-fill-3 py-1 pr-2.5 pl-3 text-[15px] font-bold text-label">
       {options.find((o) => o.value === value)?.label ?? "—"}
       <Icon name="updown" size={14} strokeWidth={2.4} />
       <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value as T)}
@@ -25,7 +25,7 @@ function Picker<T extends string>({ value, options, onChange, label }: {
   );
 }
 
-function CategoryList({ title, list, onSave }: { title: string; list: string[]; onSave: (l: string[]) => void }) {
+function CategoryList({ title, list, onSave, footer }: { title: string; list: string[]; onSave: (l: string[]) => void; footer?: string }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -51,8 +51,8 @@ function CategoryList({ title, list, onSave }: { title: string; list: string[]; 
   };
   return (
     <Group header={title} headerRight={
-      <button className="press text-[15px] text-tint normal-case" onClick={() => setEditing((e) => !e)}>{editing ? "完成" : "編輯"}</button>
-    } inset={editing ? 98 : 58}>
+      <button className="press text-[15px] font-extrabold text-tint" onClick={() => setEditing((e) => !e)}>{editing ? "完成" : "編輯"}</button>
+    } inset={editing ? 98 : 58} footer={footer}>
       {list.map((c, i) => (
         <div key={c} className="flex min-h-[48px] items-center gap-3 px-4 py-2">
           {editing && (
@@ -83,8 +83,8 @@ function CategoryList({ title, list, onSave }: { title: string; list: string[]; 
             className="h-8 min-w-0 flex-1 bg-transparent text-[17px] outline-none" />
         </div>
       ) : (
-        <button className="row-press flex min-h-[48px] w-full items-center gap-3 px-4 text-left text-[17px] text-tint" onClick={() => setAdding(true)}>
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-green text-white"><Icon name="plus" size={18} strokeWidth={2.8} /></span>
+        <button className="row-press flex min-h-[48px] w-full items-center gap-3 px-4 text-left text-[16px] font-extrabold text-tint" onClick={() => setAdding(true)}>
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-tint text-on-tint"><Icon name="plus" size={18} strokeWidth={2.8} /></span>
           新增分類…
         </button>
       )}
@@ -175,7 +175,8 @@ export function Settings({ trailing }: { trailing: React.ReactNode }) {
 
   return (
     <Screen title="設定" trailing={trailing}>
-      <Group top={12} header="這支手機" footer="只影響這支手機。">
+      <div className="lg:columns-2 lg:gap-6 [&>*]:break-inside-avoid">
+      <Group top={12} header="這支手機" footer="只影響這支手機（或這台電腦）。">
         <Row title="我是" value={null}>
           <Picker label="我是" value={prefs.me ?? ""} onChange={(v) => setPrefs({ me: v })}
             options={meta.people.map((p) => ({ value: p.id, label: p.name }))} />
@@ -193,7 +194,7 @@ export function Settings({ trailing }: { trailing: React.ReactNode }) {
       <Group header="名字" footer="兩支手機都會更新。" inset={40}>
         {meta.people.map((p, i) => (
           <label key={p.id} className="flex min-h-[44px] items-center gap-3 px-4">
-            <Dot color={personColor(meta, p.id)} size={12} />
+            <Avatar meta={meta} pid={p.id} size={28} />
             <input value={names[i] ?? ""} maxLength={20} aria-label={`第 ${i + 1} 位的名字`}
               onChange={(e) => setNames((n) => n.map((x, j) => (j === i ? e.target.value : x)))}
               onBlur={() => commitName(i)} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
@@ -202,9 +203,8 @@ export function Settings({ trailing }: { trailing: React.ReactNode }) {
         ))}
       </Group>
 
-      <CategoryList title="支出分類" list={meta.categories.expense}
+      <CategoryList title="支出分類" list={meta.categories.expense} footer="記帳畫面照這個順序。刪掉分類不會動到以前的帳。"
         onSave={(l) => store.saveMeta({ categories: { expense: l, income: meta.categories.income } })} />
-      <div className="px-8 pt-2 text-[13px] text-label-2">記帳畫面照這個順序。刪掉分類不會動到以前的帳。</div>
       <CategoryList title="收入分類" list={meta.categories.income}
         onSave={(l) => store.saveMeta({ categories: { expense: meta.categories.expense, income: l } })} />
 
@@ -216,7 +216,9 @@ export function Settings({ trailing }: { trailing: React.ReactNode }) {
               onClick={() => store.saveMeta({ fixed_categories: on ? fixed.filter((x) => x !== c) : [...fixed, c] })}>
               <CatIcon category={c} size={30} />
               <span className="flex-1 text-[17px]">{c}</span>
-              <Icon name="check" size={19} strokeWidth={2.6} className={cx("text-tint", !on && "opacity-0")} />
+              <span className={cx("flex h-6 w-6 items-center justify-center rounded-full", on ? "bg-tint text-on-tint" : "border-2 border-[var(--gray-3)]")}>
+                {on && <Icon name="check" size={14} strokeWidth={3.2} />}
+              </span>
             </button>
           );
         })}
@@ -240,6 +242,7 @@ export function Settings({ trailing }: { trailing: React.ReactNode }) {
         <Row title="上次同步" value={snap.lastSync ? timeAgo(snap.lastSync) : "—"} />
         {snap.pending > 0 && <Row title="待上傳" value={`${snap.pending} 筆`} />}
       </Group>
+      </div>
     </Screen>
   );
 }

@@ -67,6 +67,6 @@ export function applyTheme() {
   const dark = prefs.theme === "dark"
     || (prefs.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
-    m.setAttribute("content", dark ? "#0d0d0d" : "#f4f3ef");
+    m.setAttribute("content", dark ? "#16121d" : "#fbf6f0");
   });
 }
